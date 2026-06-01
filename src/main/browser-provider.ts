@@ -68,6 +68,17 @@ export function buildSystemChromeArgs({ profilePath, url }: ChromeLaunchInput): 
   ];
 }
 
+export function buildInteractiveChromeArgs({ profilePath, url }: ChromeLaunchInput): string[] {
+  return [
+    `--user-data-dir=${profilePath}`,
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-mode",
+    "--new-window",
+    url
+  ];
+}
+
 export async function findSystemChromeExecutable(candidatePaths = DEFAULT_CHROME_PATHS): Promise<string | null> {
   for (const candidatePath of candidatePaths) {
     try {
@@ -105,6 +116,26 @@ export class SystemChromeProvider {
     await page.bringToFront().catch(() => undefined);
 
     return { ...session, page };
+  }
+
+  async openInteractivePage(accountId: string, accountProfilePath: string, url: string): Promise<void> {
+    const profilePath = getChromeProfilePath(accountProfilePath);
+    await this.close(accountId);
+    await mkdir(profilePath, { recursive: true });
+
+    const chromePath = await findSystemChromeExecutable(this.chromePaths);
+    if (!chromePath) {
+      throw new Error("Chrome não encontrado. Instale o Google Chrome ou ajuste o caminho do executável.");
+    }
+
+    const child = spawn(chromePath, buildInteractiveChromeArgs({ profilePath, url }), {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: false
+    });
+
+    child.unref();
+    await this.logger.info("Chrome interativo aberto para login/captcha", { accountId });
   }
 
   async close(accountId: string): Promise<void> {
@@ -180,4 +211,3 @@ async function waitForDevToolsEndpoint(profilePath: string, timeoutMs = CHROME_S
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-

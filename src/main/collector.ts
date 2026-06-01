@@ -10,7 +10,12 @@ type CollectResult = Partial<AccountUsage>;
 const NETWORK_ERROR_PATTERN = /(ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ERR_CONNECTION|net::|ENOTFOUND|ETIMEDOUT)/i;
 const CAPTCHA_PATTERN = /(captcha|verify you are human|confirme que voc[eê] [eé] humano|cloudflare)/i;
 const LOGIN_PATTERN = /(sign in|log in|entrar|login|continue with google|continue with microsoft)/i;
+const CHROME_PROFILE_BUSY_PATTERN = /(DevToolsActivePort|porta CDP|contexto CDP)/i;
 const CHATGPT_HOME_URL = "https://chatgpt.com/";
+const INTERACTIVE_LOGIN_MESSAGE =
+  "Chrome dedicado aberto sem automação. Entre na conta, resolva a verificação, feche a janela e clique em Atualizar.";
+const INTERACTIVE_CAPTCHA_MESSAGE = "Resolva a verificação no Chrome dedicado, feche a janela e clique em Atualizar.";
+const PROFILE_BUSY_MESSAGE = "Feche a janela dedicada desta conta e clique em Atualizar novamente.";
 
 export class UsageCollector {
   constructor(
@@ -21,13 +26,12 @@ export class UsageCollector {
   async openLoginWindow(account: AccountUsage, settings: AppSettings): Promise<CollectResult> {
     await mkdir(account.profilePath, { recursive: true });
 
-    const { page } = await this.chromeProvider.openPage(account.id, account.profilePath, getLoginStartUrl(settings));
-    await page.bringToFront();
+    await this.chromeProvider.openInteractivePage(account.id, account.profilePath, getLoginStartUrl(settings));
 
     return {
       status: "needs_login",
       stale: true,
-      errorMessage: "Chrome dedicado aberto. Entre na conta, resolva a verificação se aparecer e clique em Atualizar."
+      errorMessage: INTERACTIVE_LOGIN_MESSAGE
     };
   }
 
@@ -47,11 +51,13 @@ export class UsageCollector {
       const { pageText, url } = await readPageState(page);
 
       if (CAPTCHA_PATTERN.test(pageText)) {
+        await this.openInteractiveChallenge(account, url);
+
         return {
           status: "captcha",
           stale: true,
           lastCheckedAt: new Date().toISOString(),
-          errorMessage: "Resolva a verificação no Chrome aberto e clique em Atualizar."
+          errorMessage: INTERACTIVE_CAPTCHA_MESSAGE
         };
       }
 
@@ -60,7 +66,7 @@ export class UsageCollector {
           status: "needs_login",
           stale: true,
           lastCheckedAt: new Date().toISOString(),
-          errorMessage: "Entre no Chrome dedicado desta conta e clique em Atualizar."
+          errorMessage: "Use Abrir login, entre na conta, feche a janela dedicada e clique em Atualizar."
         };
       }
 
@@ -90,14 +96,17 @@ export class UsageCollector {
       await this.logger.warn("Usage refresh failed", { accountId: account.id, message });
 
       return {
-        status: NETWORK_ERROR_PATTERN.test(message) ? "offline" : "parse_error",
+        status: getFailureStatus(account, message),
         stale: true,
         lastCheckedAt: new Date().toISOString(),
-        errorMessage: NETWORK_ERROR_PATTERN.test(message)
-          ? "Sem internet ou serviço indisponível."
-          : "Falha ao abrir ou interpretar a página de uso."
+        errorMessage: getFailureMessage(message)
       };
     }
+  }
+
+  private async openInteractiveChallenge(account: AccountUsage, url: string): Promise<void> {
+    await this.chromeProvider.close(account.id);
+    await this.chromeProvider.openInteractivePage(account.id, account.profilePath, url || CHATGPT_HOME_URL);
   }
 
   private async openUsagePage(account: AccountUsage, settings: AppSettings): Promise<Page> {
@@ -117,6 +126,30 @@ export class UsageCollector {
     await page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => undefined);
     return page;
   }
+}
+
+function getFailureStatus(account: AccountUsage, message: string): CollectResult["status"] {
+  if (NETWORK_ERROR_PATTERN.test(message)) {
+    return "offline";
+  }
+
+  if (CHROME_PROFILE_BUSY_PATTERN.test(message)) {
+    return account.status === "captcha" ? "captcha" : "needs_login";
+  }
+
+  return "parse_error";
+}
+
+function getFailureMessage(message: string): string {
+  if (NETWORK_ERROR_PATTERN.test(message)) {
+    return "Sem internet ou serviço indisponível.";
+  }
+
+  if (CHROME_PROFILE_BUSY_PATTERN.test(message)) {
+    return PROFILE_BUSY_MESSAGE;
+  }
+
+  return "Falha ao abrir ou interpretar a página de uso.";
 }
 
 function isLoginPage(url: string, text: string): boolean {

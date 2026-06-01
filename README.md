@@ -49,8 +49,10 @@ O app instalado verifica updates ao iniciar, repete a busca a cada 6 horas e per
 1. Abra o app pela bandeja.
 2. Em cada conta, clique no ícone de login.
 3. Faça login manualmente no Chrome real aberto com perfil dedicado.
-4. Depois do login, clique em atualizar na conta.
-5. Se a página mudar ou a leitura falhar, use o botão `Manual` como fallback.
+4. Resolva a verificação Cloudflare se aparecer.
+5. Feche a janela dedicada de login.
+6. Clique em atualizar na conta.
+7. Se a página mudar ou a leitura falhar, use o botão `Manual` como fallback.
 
 ## Segurança
 
@@ -59,7 +61,8 @@ O app instalado verifica updates ao iniciar, repete a busca a cada 6 horas e per
 - Estado local e perfis ficam no diretório `userData` do Electron para o app instalado.
 - Logs passam por redaction de email, tokens, cookies e chaves.
 - A automação é somente leitura: conecta ao Chrome real via CDP, abre a página de uso e extrai texto do DOM.
-- O app não tenta resolver captcha automaticamente; resolva a verificação manualmente no Chrome aberto.
+- O app não tenta resolver captcha automaticamente; ele abre uma janela Chrome dedicada sem automação para login/verificação manual.
+- Depois de login ou captcha, feche a janela dedicada antes de atualizar para liberar o perfil da coleta.
 
 ## Observação importante
 

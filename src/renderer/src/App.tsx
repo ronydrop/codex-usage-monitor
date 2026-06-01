@@ -551,8 +551,8 @@ function statusText(account: AccountUsage): string {
 
   const labels: Record<AccountUsage["status"], string> = {
     ok: "Leitura antiga",
-    needs_login: "Entre no Chrome dedicado desta conta",
-    captcha: "Resolva a verificação no Chrome aberto",
+    needs_login: "Entre no Chrome dedicado, feche a janela e atualize",
+    captcha: "Resolva a verificação, feche a janela e atualize",
     offline: "Sem internet",
     parse_error: "Leitura indisponível",
     refreshing: "Atualizando"

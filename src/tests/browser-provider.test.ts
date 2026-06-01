@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { mkdtemp, rm } from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  buildInteractiveChromeArgs,
   buildSystemChromeArgs,
   findSystemChromeExecutable,
   getChromeProfilePath,
@@ -40,6 +41,18 @@ describe("browser-provider helpers", () => {
     expect(args).toContain("--user-data-dir=C:\\profiles\\account-1\\chrome-profile");
     expect(args).toContain("https://chatgpt.com/");
     expect(args.join(" ")).not.toMatch(/stealth|disable-blink-features|AutomationControlled|captcha/i);
+  });
+
+  it("builds interactive Chrome args without CDP/debugging flags", () => {
+    const args = buildInteractiveChromeArgs({
+      profilePath: "C:\\profiles\\account-1\\chrome-profile",
+      url: "https://chatgpt.com/"
+    });
+
+    expect(args).toContain("--user-data-dir=C:\\profiles\\account-1\\chrome-profile");
+    expect(args).toContain("--new-window");
+    expect(args).toContain("https://chatgpt.com/");
+    expect(args.join(" ")).not.toMatch(/remote-debugging|devtools|AutomationControlled|captcha/i);
   });
 
   it("finds the first existing Chrome executable from candidate paths", async () => {

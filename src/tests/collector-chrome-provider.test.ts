@@ -39,6 +39,7 @@ class FakePage {
 
 class FakeChromeProvider {
   public readonly openCalls: Array<{ accountId: string; profilePath: string; url: string }> = [];
+  public readonly interactiveCalls: Array<{ accountId: string; profilePath: string; url: string }> = [];
   public readonly closeCalls: string[] = [];
 
   constructor(private readonly page: FakePage) {}
@@ -49,12 +50,23 @@ class FakeChromeProvider {
     return { page: this.page };
   }
 
+  async openInteractivePage(accountId: string, profilePath: string, url: string) {
+    this.interactiveCalls.push({ accountId, profilePath, url });
+  }
+
   async close(accountId: string) {
     this.closeCalls.push(accountId);
   }
 
   async closeAll() {
     this.closeCalls.push("all");
+  }
+}
+
+class BusyProfileChromeProvider extends FakeChromeProvider {
+  async openPage(accountId: string, profilePath: string, url: string): Promise<{ page: FakePage }> {
+    this.openCalls.push({ accountId, profilePath, url });
+    throw new Error("Chrome abriu, mas a porta CDP não ficou disponível a tempo.");
   }
 }
 
@@ -86,7 +98,8 @@ describe("UsageCollector with SystemChromeProvider", () => {
 
     const result = await collector.openLoginWindow(account, settings);
 
-    expect(provider.openCalls).toEqual([
+    expect(provider.openCalls).toEqual([]);
+    expect(provider.interactiveCalls).toEqual([
       {
         accountId: "account-1",
         profilePath: "C:\\profiles\\account-1",
@@ -96,11 +109,12 @@ describe("UsageCollector with SystemChromeProvider", () => {
     expect(result).toMatchObject({
       status: "needs_login",
       stale: true,
-      errorMessage: "Chrome dedicado aberto. Entre na conta, resolva a verificação se aparecer e clique em Atualizar."
+      errorMessage:
+        "Chrome dedicado aberto sem automação. Entre na conta, resolva a verificação, feche a janela e clique em Atualizar."
     });
   });
 
-  it("keeps Chrome open when Cloudflare/captcha is detected during collection", async () => {
+  it("opens interactive Chrome without CDP when Cloudflare/captcha is detected during collection", async () => {
     const provider = new FakeChromeProvider(new FakePage("Cloudflare verify you are human"));
     const collector = new UsageCollector(logger, provider as unknown as SystemChromeProvider);
 
@@ -109,8 +123,28 @@ describe("UsageCollector with SystemChromeProvider", () => {
     expect(result).toMatchObject({
       status: "captcha",
       stale: true,
-      errorMessage: "Resolva a verificação no Chrome aberto e clique em Atualizar."
+      errorMessage: "Resolva a verificação no Chrome dedicado, feche a janela e clique em Atualizar."
     });
-    expect(provider.closeCalls).toEqual([]);
+    expect(provider.closeCalls).toEqual(["account-1"]);
+    expect(provider.interactiveCalls).toEqual([
+      {
+        accountId: "account-1",
+        profilePath: "C:\\profiles\\account-1",
+        url: "https://chatgpt.com/codex/settings/usage"
+      }
+    ]);
+  });
+
+  it("returns an actionable login status when the interactive Chrome still holds the profile", async () => {
+    const provider = new BusyProfileChromeProvider(new FakePage(""));
+    const collector = new UsageCollector(logger, provider as unknown as SystemChromeProvider);
+
+    const result = await collector.collect({ ...account, status: "needs_login" }, settings);
+
+    expect(result).toMatchObject({
+      status: "needs_login",
+      stale: true,
+      errorMessage: "Feche a janela dedicada desta conta e clique em Atualizar novamente."
+    });
   });
 });
