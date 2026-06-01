@@ -1,9 +1,31 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #18201b;
-  background: #f6f7f2;
+  color: #eef7f0;
+  background: #0d1210;
+  --app-bg: #0d1210;
+  --surface: rgba(20, 28, 24, 0.9);
+  --surface-solid: #151e19;
+  --surface-raised: #1a241f;
+  --surface-muted: #202b25;
+  --border: #2b3a31;
+  --border-strong: #3b5546;
+  --text: #eef7f0;
+  --text-soft: #c6d2ca;
+  --muted: #98a69e;
+  --muted-strong: #7f8c84;
+  --accent: #4ade80;
+  --accent-strong: #28a860;
+  --accent-deep: #15633e;
+  --accent-text: #07140c;
+  --blue: #60a5fa;
+  --warn: #f6b95d;
+  --warn-bg: #2c2112;
+  --warn-border: #705427;
+  --danger: #ff8b8b;
+  --success-bg: #12291b;
+  --success-border: #2d6b42;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -18,9 +40,9 @@ body {
   min-width: 420px;
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(44, 123, 229, 0.08), transparent 34%),
-    linear-gradient(215deg, rgba(24, 160, 88, 0.12), transparent 32%),
-    #f6f7f2;
+    radial-gradient(circle at 15% 0%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(215deg, rgba(74, 222, 128, 0.1), transparent 32%),
+    var(--app-bg);
 }
 
 button,
@@ -68,7 +90,7 @@ button:disabled {
 
 .topbar p {
   margin: 6px 0 0;
-  color: #58635b;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -87,24 +109,37 @@ button:disabled {
   width: 36px;
   height: 36px;
   place-items: center;
-  border: 1px solid #d3dbd2;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  color: #1f2a23;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 1px 0 rgba(18, 24, 20, 0.04);
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   -webkit-app-region: no-drag;
 }
 
 .icon-button:hover,
 .icon-button.active {
-  border-color: #9ab7a0;
-  background: #ffffff;
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
 }
 
 .icon-button svg {
   width: 18px;
   height: 18px;
   stroke-width: 2.1;
+}
+
+.icon-button > span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  line-height: 0;
+}
+
+.icon-button > span svg {
+  width: 100%;
+  height: 100%;
 }
 
 .primary-button,
@@ -124,15 +159,15 @@ button:disabled {
 }
 
 .primary-button {
-  color: #ffffff;
-  background: #1b6b43;
+  color: var(--accent-text);
+  background: var(--accent);
 }
 
 .text-button,
 .mini-button {
-  color: #213027;
-  border-color: #d7ddd5;
-  background: #ffffff;
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--surface-raised);
 }
 
 .primary-button svg,
@@ -146,9 +181,9 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6c3a00;
-  background: #fff6df;
-  border: 1px solid #f1d697;
+  color: #ffd48a;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 13px;
@@ -163,9 +198,9 @@ button:disabled {
 
 .settings-panel {
   margin-bottom: 12px;
-  border: 1px solid #dbe1d9;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface);
   padding: 12px;
 }
 
@@ -173,7 +208,7 @@ button:disabled {
 .manual-panel label {
   display: grid;
   gap: 6px;
-  color: #566159;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 650;
 }
@@ -183,10 +218,10 @@ button:disabled {
 .label-editor input {
   width: 100%;
   min-height: 34px;
-  border: 1px solid #cfd7ce;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #18201b;
+  background: #0f1713;
+  color: var(--text);
   padding: 0 10px;
   outline: none;
 }
@@ -194,8 +229,8 @@ button:disabled {
 .settings-panel input:focus,
 .manual-panel input:focus,
 .label-editor input:focus {
-  border-color: #1b6b43;
-  box-shadow: 0 0 0 3px rgba(27, 107, 67, 0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.16);
 }
 
 .settings-grid {
@@ -209,13 +244,13 @@ button:disabled {
   display: flex !important;
   align-items: center;
   grid-template-columns: none !important;
-  color: #253129 !important;
+  color: var(--text-soft) !important;
 }
 
 .toggle-row input {
   width: 16px;
   min-height: 16px;
-  accent-color: #1b6b43;
+  accent-color: var(--accent);
 }
 
 .settings-actions {
@@ -229,9 +264,9 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   margin-top: 12px;
-  border: 1px solid #dbe1d9;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface-raised);
   padding: 10px;
 }
 
@@ -245,7 +280,7 @@ button:disabled {
 .update-copy svg {
   width: 18px;
   height: 18px;
-  color: #1b6b43;
+  color: var(--accent);
   flex: 0 0 auto;
 }
 
@@ -255,27 +290,27 @@ button:disabled {
 }
 
 .update-copy strong {
-  color: #1d2a22;
+  color: var(--text);
   font-size: 13px;
   line-height: 1.2;
 }
 
 .update-copy span {
   margin-top: 2px;
-  color: #667069;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.3;
 }
 
 .update-panel.status-error,
 .update-panel.status-disabled {
-  border-color: #efd29a;
-  background: #fffaf0;
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
 }
 
 .update-panel.status-downloaded {
-  border-color: #a8d7b6;
-  background: #f1fbf4;
+  border-color: var(--success-border);
+  background: var(--success-bg);
 }
 
 .account-list {
@@ -284,30 +319,30 @@ button:disabled {
 }
 
 .account-card {
-  border: 1px solid #d8ded6;
-  border-left: 4px solid #89948c;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--muted-strong);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--surface);
   padding: 12px;
-  box-shadow: 0 12px 28px rgba(24, 32, 27, 0.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 .account-card.status-ok {
-  border-left-color: #1b8f5a;
+  border-left-color: var(--accent-strong);
 }
 
 .account-card.status-needs_login,
 .account-card.status-captcha {
-  border-left-color: #c47a13;
+  border-left-color: var(--warn);
 }
 
 .account-card.status-offline,
 .account-card.status-parse_error {
-  border-left-color: #a84444;
+  border-left-color: var(--danger);
 }
 
 .account-card.status-refreshing {
-  border-left-color: #2c7be5;
+  border-left-color: var(--blue);
 }
 
 .account-main {
@@ -332,7 +367,7 @@ button:disabled {
 .account-title-row p {
   min-height: 18px;
   margin: 5px 0 0;
-  color: #5f6961;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -365,7 +400,7 @@ button:disabled {
 }
 
 .meter-copy span {
-  color: #667069;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 650;
 }
@@ -374,7 +409,7 @@ button:disabled {
   height: 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e0e6df;
+  background: #26342d;
 }
 
 .bar-fill {
@@ -389,8 +424,8 @@ button:disabled {
   min-height: 48px;
   margin: 12px 0 8px;
   place-items: center;
-  color: #69746c;
-  border: 1px dashed #cfd7ce;
+  color: var(--muted);
+  border: 1px dashed var(--border-strong);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -407,18 +442,18 @@ button:disabled {
   align-items: center;
   gap: 8px;
   min-height: 28px;
-  color: #4d5a52;
+  color: var(--text-soft);
   font-size: 12px;
 }
 
 .window-row strong {
-  color: #1d2a22;
+  color: var(--text);
   font-size: 13px;
   text-align: right;
 }
 
 .window-row small {
-  color: #667069;
+  color: var(--muted);
   font-size: 11px;
   text-align: right;
 }
@@ -429,7 +464,7 @@ button:disabled {
   gap: 6px;
   min-height: 24px;
   margin-top: 8px;
-  color: #647067;
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -439,11 +474,11 @@ button:disabled {
 }
 
 .ok-icon {
-  color: #1b8f5a;
+  color: var(--accent);
 }
 
 .warn-icon {
-  color: #b36c0d;
+  color: var(--warn);
 }
 
 .account-actions {
@@ -456,18 +491,19 @@ button:disabled {
   grid-template-columns: 94px 1fr 36px 36px;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #e0e5de;
+  border-top: 1px solid var(--border);
 }
 
 .footer-line {
   margin-top: 12px;
-  color: #33513e;
-  background: rgba(226, 243, 232, 0.86);
-  border-color: #b7dbc1;
+  color: var(--text-soft);
+  background: var(--success-bg);
+  border-color: var(--success-border);
 }
 
 .spin {
   animation: spin 0.9s linear infinite;
+  transform-origin: center;
 }
 
 @keyframes spin {

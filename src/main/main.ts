@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, screen, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, nativeTheme, screen, shell } from "electron";
 import { autoUpdater } from "electron-updater";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +35,8 @@ app.on("second-instance", () => {
 });
 
 app.whenReady().then(async () => {
+  nativeTheme.themeSource = "dark";
+
   const userDataPath = app.getPath("userData");
   store = new AccountStore(userDataPath);
   logger = new AppLogger(userDataPath);
@@ -130,15 +132,15 @@ function quitApp(): void {
 }
 
 function createTrayIcon(): Electron.NativeImage {
-  const svg = encodeURIComponent(`
+  const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <rect width="32" height="32" rx="7" fill="#141916"/>
-      <path d="M10 17.5 7.5 15 10 12.5" fill="none" stroke="#eff7ef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M22 12.5 24.5 15 22 17.5" fill="none" stroke="#eff7ef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M13.5 22 18.5 10" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/>
+      <path fill="#60a5fa" d="M12.8 9.4 6.2 16l6.6 6.6 2.4-2.4-4.2-4.2 4.2-4.2-2.4-2.4Z"/>
+      <path fill="#60a5fa" d="m19.2 9.4-2.4 2.4 4.2 4.2-4.2 4.2 2.4 2.4 6.6-6.6-6.6-6.6Z"/>
+      <path fill="#4ade80" d="M18.7 6.1c1 .3 1.6 1.3 1.3 2.3l-5 17.4c-.3 1-1.3 1.6-2.3 1.3s-1.6-1.3-1.3-2.3l5-17.4c.3-1 1.3-1.6 2.3-1.3Z"/>
     </svg>
-  `);
-  return nativeImage.createFromDataURL(`data:image/svg+xml;charset=utf-8,${svg}`);
+  `;
+  const icon = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+  return process.platform === "win32" ? icon.resize({ width: 16, height: 16 }) : icon;
 }
 
 function getPreferredWindowBounds(): Electron.Rectangle {

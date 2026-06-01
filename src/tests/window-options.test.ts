@@ -17,7 +17,7 @@ describe("createMainWindowOptions", () => {
       frame: false,
       autoHideMenuBar: true,
       title: "Codex Usage Monitor",
-      backgroundColor: "#f7f8f5",
+      backgroundColor: "#0d1210",
       webPreferences: {
         preload: "preload.mjs",
         contextIsolation: true,

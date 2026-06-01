@@ -21,7 +21,7 @@ export function createMainWindowOptions({
     autoHideMenuBar: true,
     title: "Codex Usage Monitor",
     icon,
-    backgroundColor: "#f7f8f5",
+    backgroundColor: "#0d1210",
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
