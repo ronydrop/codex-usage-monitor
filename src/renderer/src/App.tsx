@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   Download,
   ExternalLink,
@@ -103,6 +104,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState<AppSettings | undefined>();
   const [updateState, setUpdateState] = useState<UpdateState | undefined>();
+  const [expandedAccountIds, setExpandedAccountIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     void loadState();
@@ -173,9 +175,41 @@ export function App() {
   }
 
   function beginManual(account: AccountUsage) {
+    expandAccount(account.id);
     setManualAccountId(account.id);
     setManualPercent(String(account.remainingPercent ?? 50));
     setManualReset(account.resetText ?? "");
+  }
+
+  function expandAccount(accountId: string) {
+    setExpandedAccountIds((current) => {
+      if (current.has(accountId)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(accountId);
+      return next;
+    });
+  }
+
+  function toggleAccountExpanded(accountId: string) {
+    const shouldCollapse = expandedAccountIds.has(accountId) || manualAccountId === accountId;
+
+    if (shouldCollapse && manualAccountId === accountId) {
+      setManualAccountId(undefined);
+    }
+
+    setExpandedAccountIds((current) => {
+      const next = new Set(current);
+      if (shouldCollapse) {
+        next.delete(accountId);
+      } else {
+        next.add(accountId);
+      }
+
+      return next;
+    });
   }
 
   async function saveManualUsage() {
@@ -298,93 +332,122 @@ export function App() {
       ) : null}
 
       <section className="account-list" aria-label="Contas monitoradas">
-        {state.accounts.map((account) => (
-          <article className={`account-card status-${account.status}`} key={account.id}>
-            <div className="account-main">
-              <div className="account-title-row">
-                {editingLabelId === account.id ? (
-                  <form
-                    className="label-editor"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void callApi(`label-${account.id}`, () => api.updateLabel(account.id, labelDraft));
-                      setEditingLabelId(undefined);
-                    }}
-                  >
-                    <input value={labelDraft} onChange={(event) => setLabelDraft(event.target.value)} autoFocus />
-                    <IconButton title="Salvar nome" type="submit">
-                      <Save />
-                    </IconButton>
-                    <IconButton title="Cancelar" type="button" onClick={() => setEditingLabelId(undefined)}>
-                      <X />
-                    </IconButton>
-                  </form>
-                ) : (
-                  <>
-                    <div>
-                      <h2>{account.label}</h2>
-                      <p>{statusText(account)}</p>
+        {state.accounts.map((account) => {
+          const expanded = expandedAccountIds.has(account.id) || manualAccountId === account.id;
+          const detailsId = `account-details-${account.id}`;
+
+          return (
+            <article
+              className={`account-card status-${account.status}${expanded ? " expanded" : " collapsed"}`}
+              key={account.id}
+            >
+              <div className="account-main">
+                <div className="account-title-row">
+                  {editingLabelId === account.id ? (
+                    <form
+                      className="label-editor"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void callApi(`label-${account.id}`, () => api.updateLabel(account.id, labelDraft));
+                        setEditingLabelId(undefined);
+                      }}
+                    >
+                      <input value={labelDraft} onChange={(event) => setLabelDraft(event.target.value)} autoFocus />
+                      <IconButton title="Salvar nome" type="submit">
+                        <Save />
+                      </IconButton>
+                      <IconButton title="Cancelar" type="button" onClick={() => setEditingLabelId(undefined)}>
+                        <X />
+                      </IconButton>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="account-heading">
+                        <button
+                          className="account-collapse-button"
+                          type="button"
+                          title={expanded ? "Recolher conta" : "Expandir conta"}
+                          aria-expanded={expanded}
+                          aria-controls={detailsId}
+                          onClick={() => toggleAccountExpanded(account.id)}
+                        >
+                          <ChevronDown className={expanded ? "collapse-icon expanded" : "collapse-icon"} />
+                        </button>
+                        <div>
+                          <h2>{account.label}</h2>
+                          <p>{statusText(account)}</p>
+                        </div>
+                      </div>
+                      <IconButton title="Renomear" onClick={() => beginEditLabel(account)}>
+                        <Pencil />
+                      </IconButton>
+                    </>
+                  )}
+                </div>
+
+                {expanded ? (
+                  <div className="account-details" id={detailsId}>
+                    <UsageMeter account={account} />
+                    <UsageWindows account={account} />
+                    <AccountMeta account={account} />
+
+                    <div className="account-actions">
+                      <IconButton
+                        title="Atualizar conta"
+                        busy={pendingAction === `refresh-${account.id}` || account.status === "refreshing"}
+                        onClick={() => callApi(`refresh-${account.id}`, () => api.refreshAccount(account.id))}
+                      >
+                        <RefreshCcw />
+                      </IconButton>
+                      <IconButton
+                        title="Abrir login"
+                        onClick={() => callApi(`login-${account.id}`, () => api.openLogin(account.id))}
+                      >
+                        <LogIn />
+                      </IconButton>
+                      <button className="mini-button" onClick={() => beginManual(account)}>
+                        Manual
+                      </button>
                     </div>
-                    <IconButton title="Renomear" onClick={() => beginEditLabel(account)}>
-                      <Pencil />
-                    </IconButton>
-                  </>
+
+                    {manualAccountId === account.id ? (
+                      <form
+                        className="manual-panel"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void saveManualUsage();
+                        }}
+                      >
+                        <label>
+                          <span>% restante</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={manualPercent}
+                            onChange={(event) => setManualPercent(event.target.value)}
+                          />
+                        </label>
+                        <label>
+                          <span>Reset</span>
+                          <input value={manualReset} onChange={(event) => setManualReset(event.target.value)} />
+                        </label>
+                        <IconButton title="Salvar uso manual" type="submit">
+                          <Save />
+                        </IconButton>
+                        <IconButton title="Cancelar" type="button" onClick={() => setManualAccountId(undefined)}>
+                          <X />
+                        </IconButton>
+                      </form>
+                    ) : null}
+                  </div>
+                ) : (
+                  <CompactAccountSummary account={account} />
                 )}
               </div>
-
-              <UsageMeter account={account} />
-              <UsageWindows account={account} />
-              <AccountMeta account={account} />
-            </div>
-
-            <div className="account-actions">
-              <IconButton
-                title="Atualizar conta"
-                busy={pendingAction === `refresh-${account.id}` || account.status === "refreshing"}
-                onClick={() => callApi(`refresh-${account.id}`, () => api.refreshAccount(account.id))}
-              >
-                <RefreshCcw />
-              </IconButton>
-              <IconButton title="Abrir login" onClick={() => callApi(`login-${account.id}`, () => api.openLogin(account.id))}>
-                <LogIn />
-              </IconButton>
-              <button className="mini-button" onClick={() => beginManual(account)}>
-                Manual
-              </button>
-            </div>
-
-            {manualAccountId === account.id ? (
-              <form
-                className="manual-panel"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void saveManualUsage();
-                }}
-              >
-                <label>
-                  <span>% restante</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={manualPercent}
-                    onChange={(event) => setManualPercent(event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Reset</span>
-                  <input value={manualReset} onChange={(event) => setManualReset(event.target.value)} />
-                </label>
-                <IconButton title="Salvar uso manual" type="submit">
-                  <Save />
-                </IconButton>
-                <IconButton title="Cancelar" type="button" onClick={() => setManualAccountId(undefined)}>
-                  <X />
-                </IconButton>
-              </form>
-            ) : null}
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </section>
 
       <footer className="footer-line">
@@ -458,6 +521,32 @@ function UsageMeter({ account }: { account: AccountUsage }) {
         <strong>{used}%</strong>
         <span>usado</span>
       </div>
+    </div>
+  );
+}
+
+function CompactAccountSummary({ account }: { account: AccountUsage }) {
+  const remaining = account.remainingPercent;
+
+  if (remaining === undefined) {
+    return (
+      <div className="account-summary">
+        <StatusIcon account={account} />
+        <span className="summary-status">{statusText(account)}</span>
+        <span className="summary-empty">Sem leitura</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="account-summary">
+      <StatusIcon account={account} />
+      <span className="summary-status">{statusText(account)}</span>
+      <div className="compact-meter" aria-label={`${remaining}% restante`}>
+        <div className="compact-meter-fill" style={{ width: `${remaining}%` }} />
+      </div>
+      <strong>{remaining}%</strong>
+      <span>restante</span>
     </div>
   );
 }
