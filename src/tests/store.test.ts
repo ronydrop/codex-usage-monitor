@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
@@ -50,6 +50,61 @@ describe("AccountStore", () => {
       usedPercent: 32,
       resetText: "07:08",
       stale: false
+    });
+  });
+
+  it("serializes concurrent account updates without losing state", async () => {
+    const { store } = await makeStore();
+    await store.loadState();
+
+    await expect(
+      Promise.all([
+        store.updateAccount("account-1", { label: "Conta Login", status: "needs_login", stale: true }),
+        store.updateAccount("account-2", { label: "Conta Ok", status: "ok", stale: false, remainingPercent: 80 }),
+        store.updateAccount("account-3", { label: "Conta Erro", status: "parse_error", stale: true })
+      ])
+    ).resolves.toHaveLength(3);
+
+    const reloaded = await store.load();
+
+    expect(reloaded[0]).toMatchObject({ label: "Conta Login", status: "needs_login", stale: true });
+    expect(reloaded[1]).toMatchObject({ label: "Conta Ok", status: "ok", stale: false, remainingPercent: 80 });
+    expect(reloaded[2]).toMatchObject({ label: "Conta Erro", status: "parse_error", stale: true });
+  });
+
+  it("recovers persisted refreshing accounts after restart", async () => {
+    const { dir, store } = await makeStore();
+    await writeFile(
+      join(dir, "state.json"),
+      JSON.stringify({
+        accounts: [
+          {
+            id: "account-1",
+            label: "Conta presa",
+            profilePath: join(dir, "profiles", "account-1"),
+            status: "refreshing",
+            stale: false,
+            remainingPercent: 42
+          }
+        ],
+        settings: {
+          usageUrl: "https://chatgpt.com/codex/settings/usage",
+          refreshIntervalMinutes: 30,
+          refreshInBackground: false,
+          startWithWindows: false
+        }
+      }),
+      "utf8"
+    );
+
+    const state = await store.loadState();
+
+    expect(state.accounts[0]).toMatchObject({
+      label: "Conta presa",
+      status: "parse_error",
+      stale: true,
+      remainingPercent: 42,
+      errorMessage: "Atualização anterior foi interrompida. Clique em Atualizar."
     });
   });
 });
