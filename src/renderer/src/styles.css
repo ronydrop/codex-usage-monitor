@@ -1,0 +1,500 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #18201b;
+  background: #f6f7f2;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 420px;
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(44, 123, 229, 0.08), transparent 34%),
+    linear-gradient(215deg, rgba(24, 160, 88, 0.12), transparent 32%),
+    #f6f7f2;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.app-shell {
+  width: min(100%, 560px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.app-shell.loading {
+  display: grid;
+  place-items: center;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 2px 18px;
+  -webkit-app-region: drag;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.topbar p {
+  margin: 6px 0 0;
+  color: #58635b;
+  font-size: 13px;
+}
+
+.topbar-actions,
+.account-actions,
+.settings-actions,
+.label-editor,
+.manual-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid #d3dbd2;
+  border-radius: 8px;
+  color: #1f2a23;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 1px 0 rgba(18, 24, 20, 0.04);
+  -webkit-app-region: no-drag;
+}
+
+.icon-button:hover,
+.icon-button.active {
+  border-color: #9ab7a0;
+  background: #ffffff;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.1;
+}
+
+.primary-button,
+.text-button,
+.mini-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 650;
+  -webkit-app-region: no-drag;
+}
+
+.primary-button {
+  color: #ffffff;
+  background: #1b6b43;
+}
+
+.text-button,
+.mini-button {
+  color: #213027;
+  border-color: #d7ddd5;
+  background: #ffffff;
+}
+
+.primary-button svg,
+.text-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.alert-line,
+.footer-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c3a00;
+  background: #fff6df;
+  border: 1px solid #f1d697;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.alert-line svg,
+.footer-line svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.settings-panel {
+  margin-bottom: 12px;
+  border: 1px solid #dbe1d9;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 12px;
+}
+
+.settings-panel label,
+.manual-panel label {
+  display: grid;
+  gap: 6px;
+  color: #566159;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settings-panel input,
+.manual-panel input,
+.label-editor input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #cfd7ce;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #18201b;
+  padding: 0 10px;
+  outline: none;
+}
+
+.settings-panel input:focus,
+.manual-panel input:focus,
+.label-editor input:focus {
+  border-color: #1b6b43;
+  box-shadow: 0 0 0 3px rgba(27, 107, 67, 0.12);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 96px 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.toggle-row {
+  display: flex !important;
+  align-items: center;
+  grid-template-columns: none !important;
+  color: #253129 !important;
+}
+
+.toggle-row input {
+  width: 16px;
+  min-height: 16px;
+  accent-color: #1b6b43;
+}
+
+.settings-actions {
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.update-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  border: 1px solid #dbe1d9;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.update-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.update-copy svg {
+  width: 18px;
+  height: 18px;
+  color: #1b6b43;
+  flex: 0 0 auto;
+}
+
+.update-copy strong,
+.update-copy span {
+  display: block;
+}
+
+.update-copy strong {
+  color: #1d2a22;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.update-copy span {
+  margin-top: 2px;
+  color: #667069;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.update-panel.status-error,
+.update-panel.status-disabled {
+  border-color: #efd29a;
+  background: #fffaf0;
+}
+
+.update-panel.status-downloaded {
+  border-color: #a8d7b6;
+  background: #f1fbf4;
+}
+
+.account-list {
+  display: grid;
+  gap: 10px;
+}
+
+.account-card {
+  border: 1px solid #d8ded6;
+  border-left: 4px solid #89948c;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 12px;
+  box-shadow: 0 12px 28px rgba(24, 32, 27, 0.08);
+}
+
+.account-card.status-ok {
+  border-left-color: #1b8f5a;
+}
+
+.account-card.status-needs_login,
+.account-card.status-captcha {
+  border-left-color: #c47a13;
+}
+
+.account-card.status-offline,
+.account-card.status-parse_error {
+  border-left-color: #a84444;
+}
+
+.account-card.status-refreshing {
+  border-left-color: #2c7be5;
+}
+
+.account-main {
+  min-width: 0;
+}
+
+.account-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-title-row h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 740;
+  letter-spacing: 0;
+}
+
+.account-title-row p {
+  min-height: 18px;
+  margin: 5px 0 0;
+  color: #5f6961;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.label-editor {
+  width: 100%;
+}
+
+.usage-meter {
+  display: grid;
+  grid-template-columns: 74px 1fr 58px;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 8px;
+}
+
+.meter-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.meter-copy.right {
+  text-align: right;
+}
+
+.meter-copy strong {
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 780;
+}
+
+.meter-copy span {
+  color: #667069;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.bar-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e0e6df;
+}
+
+.bar-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2c7be5, #25a269);
+}
+
+.empty-meter {
+  display: grid;
+  min-height: 48px;
+  margin: 12px 0 8px;
+  place-items: center;
+  color: #69746c;
+  border: 1px dashed #cfd7ce;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.window-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.window-row {
+  display: grid;
+  grid-template-columns: 1fr 56px 82px;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  color: #4d5a52;
+  font-size: 12px;
+}
+
+.window-row strong {
+  color: #1d2a22;
+  font-size: 13px;
+  text-align: right;
+}
+
+.window-row small {
+  color: #667069;
+  font-size: 11px;
+  text-align: right;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin-top: 8px;
+  color: #647067;
+  font-size: 12px;
+}
+
+.meta-row svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ok-icon {
+  color: #1b8f5a;
+}
+
+.warn-icon {
+  color: #b36c0d;
+}
+
+.account-actions {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.manual-panel {
+  display: grid;
+  grid-template-columns: 94px 1fr 36px 36px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e0e5de;
+}
+
+.footer-line {
+  margin-top: 12px;
+  color: #33513e;
+  background: rgba(226, 243, 232, 0.86);
+  border-color: #b7dbc1;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    min-width: 360px;
+  }
+
+  .app-shell {
+    padding: 12px;
+  }
+
+  .settings-grid,
+  .manual-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .usage-meter {
+    grid-template-columns: 66px 1fr 54px;
+  }
+
+  .window-row {
+    grid-template-columns: 1fr 48px 72px;
+  }
+}

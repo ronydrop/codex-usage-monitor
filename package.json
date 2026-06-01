@@ -1,0 +1,68 @@
+{
+  "name": "codex-usage-monitor",
+  "version": "0.1.0",
+  "description": "Windows tray app to monitor Codex usage across local ChatGPT accounts.",
+  "author": "ronydrop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ronydrop/codex-usage-monitor.git"
+  },
+  "homepage": "https://github.com/ronydrop/codex-usage-monitor",
+  "main": "out/main/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "electron-vite build",
+    "package": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:publish": "npm run build && electron-builder --publish always"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "electron-updater": "^6.8.3",
+    "lucide-react": "^0.468.0",
+    "playwright": "^1.57.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.6",
+    "vitest": "^4.0.14"
+  },
+  "build": {
+    "appId": "com.ronydrop.codexUsageMonitor",
+    "productName": "Codex Usage Monitor",
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "${name}-setup-${version}.${ext}",
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ronydrop",
+        "repo": "codex-usage-monitor"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
