@@ -10,7 +10,7 @@ const VALID_STATUSES: AccountStatus[] = ["ok", "no_data", "offline", "refreshing
 
 const DEFAULT_SETTINGS: AppSettings = {
   codexHome: "",
-  refreshIntervalMinutes: 30,
+  refreshIntervalMinutes: 15,
   refreshInBackground: false,
   startWithWindows: false
 };
@@ -62,6 +62,15 @@ export class AccountStore {
         account.id === accountId ? { ...account, ...patch, id: account.id } : account
       );
 
+      await this.writeNormalizedState({ ...state, accounts });
+      return accounts;
+    });
+  }
+
+  async removeAccount(accountId: string): Promise<AccountUsage[]> {
+    return this.enqueueMutation(async () => {
+      const state = await this.readStateFromDisk();
+      const accounts = state.accounts.filter((a) => a.id !== accountId);
       await this.writeNormalizedState({ ...state, accounts });
       return accounts;
     });

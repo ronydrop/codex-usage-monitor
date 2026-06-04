@@ -22,7 +22,10 @@ export class UsageCollector {
   constructor(private readonly logger: AppLogger) {}
 
   async readActiveUsage(settings: AppSettings, now = Date.now()): Promise<ActiveUsage> {
-    const codexHome = resolveCodexHome(settings);
+    return this.readUsageFor(resolveCodexHome(settings), now);
+  }
+
+  async readUsageFor(codexHome: string, now = Date.now()): Promise<ActiveUsage> {
     const account = await readActiveAccount(codexHome);
 
     if (!account.accountId) {
