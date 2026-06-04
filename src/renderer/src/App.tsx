@@ -4,9 +4,7 @@ import {
   ChevronDown,
   Clock3,
   Download,
-  ExternalLink,
   FileText,
-  LogIn,
   PackageCheck,
   Pencil,
   RefreshCcw,
@@ -18,12 +16,13 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AccountUsage, AppSettings, AppState, IpcResult, ManualUsageInput, UpdateState } from "../../shared/types";
+import { formatReset } from "../../shared/reset";
 
 type PendingAction = string | undefined;
 
 const fallbackState: AppState = {
   settings: {
-    usageUrl: "https://chatgpt.com/codex/settings/usage",
+    codexHome: "",
     refreshIntervalMinutes: 30,
     refreshInBackground: false,
     startWithWindows: false
@@ -31,38 +30,27 @@ const fallbackState: AppState = {
   accounts: [
     {
       id: "account-1",
-      label: "Conta A",
-      profilePath: "preview/account-1",
+      label: "rony@aprovei.ai",
+      email: "rony@aprovei.ai",
+      planType: "pro",
       status: "ok",
-      remainingPercent: 68,
-      usedPercent: 32,
-      resetText: "07:08",
+      remainingPercent: 80,
+      usedPercent: 20,
+      resetText: "em 3 h",
       stale: false,
       lastCheckedAt: new Date().toISOString(),
       windows: [
-        { label: "5 h", remainingPercent: 68, usedPercent: 32, resetText: "07:08", rawText: "68% 07:08" },
-        { label: "Semanal", remainingPercent: 93, usedPercent: 7, resetText: "8 de jun.", rawText: "93% 8 de jun." }
+        { label: "5 h", remainingPercent: 80, usedPercent: 20, resetText: "em 3 h", rawText: "20% usado · em 3 h" },
+        { label: "Semanal", remainingPercent: 0, usedPercent: 100, resetText: "em 2 d", rawText: "100% usado · em 2 d" }
       ]
     },
     {
       id: "account-2",
-      label: "Conta B",
-      profilePath: "preview/account-2",
-      status: "needs_login",
+      label: "sac@aprovei.ai",
+      email: "sac@aprovei.ai",
+      status: "no_data",
       stale: true,
-      errorMessage: "Sessão não configurada."
-    },
-    {
-      id: "account-3",
-      label: "Conta C",
-      profilePath: "preview/account-3",
-      status: "parse_error",
-      remainingPercent: 44,
-      usedPercent: 56,
-      resetText: "8 de jun.",
-      stale: true,
-      lastCheckedAt: new Date().toISOString(),
-      errorMessage: "Última leitura ficou stale."
+      errorMessage: "Sem leitura do Codex ainda. Use o Codex nesta conta ou informe Manual."
     }
   ]
 };
@@ -77,7 +65,6 @@ const previewApi = {
   getState: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   refreshAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   refreshAll: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
-  openLogin: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   updateLabel: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   saveManualUsage: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   saveSettings: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
@@ -276,10 +263,11 @@ export function App() {
       {settingsOpen ? (
         <section className="settings-panel" aria-label="Configurações">
           <label>
-            <span>URL de uso</span>
+            <span>Pasta do Codex (.codex)</span>
             <input
-              value={settingsDraft.usageUrl}
-              onChange={(event) => setSettingsDraft({ ...settingsDraft, usageUrl: event.target.value })}
+              value={settingsDraft.codexHome}
+              placeholder="Padrão: ~/.codex"
+              onChange={(event) => setSettingsDraft({ ...settingsDraft, codexHome: event.target.value })}
             />
           </label>
           <div className="settings-grid">
@@ -332,6 +320,11 @@ export function App() {
       ) : null}
 
       <section className="account-list" aria-label="Contas monitoradas">
+        {state.accounts.length === 0 ? (
+          <p className="empty-hint">
+            Nenhuma conta ainda. Abra o Codex (Desktop ou CLI) em uma conta e clique em atualizar para ler o uso.
+          </p>
+        ) : null}
         {state.accounts.map((account) => {
           const expanded = expandedAccountIds.has(account.id) || manualAccountId === account.id;
           const detailsId = `account-details-${account.id}`;
@@ -399,12 +392,6 @@ export function App() {
                       >
                         <RefreshCcw />
                       </IconButton>
-                      <IconButton
-                        title="Abrir login"
-                        onClick={() => callApi(`login-${account.id}`, () => api.openLogin(account.id))}
-                      >
-                        <LogIn />
-                      </IconButton>
                       <button className="mini-button" onClick={() => beginManual(account)}>
                         Manual
                       </button>
@@ -453,7 +440,7 @@ export function App() {
       <footer className="footer-line">
         <ShieldCheck aria-hidden />
         <span>
-          v{updateState?.currentVersion ?? "0.1.0"} · Sessões ficam locais por perfil. Senhas e cookies não entram nos logs.
+          v{updateState?.currentVersion ?? "0.1.0"} · Lê o uso direto dos logs locais do Codex. Sem navegador, sem senha.
         </span>
       </footer>
     </main>
@@ -562,7 +549,7 @@ function UsageWindows({ account }: { account: AccountUsage }) {
         <div className="window-row" key={`${window.label}-${window.rawText}`}>
           <span>{window.label}</span>
           <strong>{window.remainingPercent}%</strong>
-          <small>{window.resetText ?? "sem reset"}</small>
+          <small>{resetLabel(window.resetsAt, window.resetText) ?? "sem reset"}</small>
         </div>
       ))}
     </div>
@@ -570,18 +557,28 @@ function UsageWindows({ account }: { account: AccountUsage }) {
 }
 
 function AccountMeta({ account }: { account: AccountUsage }) {
+  const reset = resetLabel(account.resetsAt, account.resetText);
+
   return (
     <div className="meta-row">
       <StatusIcon account={account} />
       <span>{account.lastCheckedAt ? formatDate(account.lastCheckedAt) : "Nunca atualizado"}</span>
-      {account.resetText ? (
+      {reset ? (
         <>
           <Clock3 aria-hidden />
-          <span>{account.resetText}</span>
+          <span>{reset}</span>
         </>
       ) : null}
     </div>
   );
+}
+
+function resetLabel(resetsAt?: number, fallback?: string): string | undefined {
+  if (resetsAt) {
+    return formatReset(resetsAt, Date.now());
+  }
+
+  return fallback;
 }
 
 function StatusIcon({ account }: { account: AccountUsage }) {
@@ -627,7 +624,7 @@ function IconButton({
 
 function statusText(account: AccountUsage): string {
   if (account.status === "ok" && !account.stale) {
-    return "Leitura atual";
+    return account.manual ? "Uso manual" : "Leitura atual";
   }
 
   if (account.status === "refreshing") {
@@ -640,10 +637,8 @@ function statusText(account: AccountUsage): string {
 
   const labels: Record<AccountUsage["status"], string> = {
     ok: "Leitura antiga",
-    needs_login: "Entre no Chrome dedicado, feche a janela e atualize",
-    captcha: "Resolva a verificação, feche a janela e atualize",
+    no_data: "Sem leitura ainda",
     offline: "Sem internet",
-    parse_error: "Leitura indisponível",
     refreshing: "Atualizando"
   };
 

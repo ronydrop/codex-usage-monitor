@@ -1,36 +1,34 @@
-export type AccountStatus = "ok" | "needs_login" | "captcha" | "offline" | "parse_error" | "refreshing";
+export type AccountStatus = "ok" | "no_data" | "offline" | "refreshing";
 
 export type UsageWindow = {
   label: string;
   remainingPercent: number;
   usedPercent: number;
   resetText?: string;
+  resetsAt?: number;
   rawText: string;
 };
 
 export type AccountUsage = {
   id: string;
   label: string;
-  profilePath: string;
+  accountId?: string;
+  email?: string;
+  planType?: string;
+  manual?: boolean;
   status: AccountStatus;
   usedPercent?: number;
   remainingPercent?: number;
   resetText?: string;
+  resetsAt?: number;
   lastCheckedAt?: string;
   stale: boolean;
   windows?: UsageWindow[];
   errorMessage?: string;
 };
 
-export type UsageParseResult = {
-  usedPercent: number;
-  remainingPercent: number;
-  resetText?: string;
-  windows: UsageWindow[];
-};
-
 export type AppSettings = {
-  usageUrl: string;
+  codexHome: string;
   refreshIntervalMinutes: number;
   refreshInBackground: boolean;
   startWithWindows: boolean;

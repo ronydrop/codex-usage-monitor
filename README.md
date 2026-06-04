@@ -5,9 +5,15 @@ App local para Windows que fica na bandeja, abre sem barra nativa no canto infer
 ## Stack
 
 - Electron + React + TypeScript
-- Playwright conectado via CDP a um Chrome real, com perfil dedicado por conta
-- Vitest para parser/store/redaction/lock
+- Lê o uso direto dos logs locais do Codex (`~/.codex/sessions/**/rollout-*.jsonl`) — sem navegador, sem Cloudflare, sem captcha
+- Vitest para provider/store/redaction/lock
 - electron-builder + electron-updater para empacotamento Windows e auto-update via GitHub Releases
+
+## Como funciona
+
+O Codex (Desktop ou CLI) grava o consumo em disco a cada requisição, no evento `token_count` → `rate_limits` dos arquivos de sessão. O app lê o snapshot mais recente e o associa à conta ativa do `~/.codex/auth.json`. Trocou de conta no Codex? O `auth.json` muda e os novos snapshots entram na conta nova — o monitor vai acumulando o uso de cada conta conforme você usa.
+
+Janela `primary` = limite de 5h, `secondary` = limite semanal. `remaining = 100 - used_percent`, e o reset vem de `resets_at`.
 
 ## Rodar em desenvolvimento
 
@@ -46,24 +52,18 @@ O app instalado verifica updates ao iniciar, repete a busca a cada 6 horas e per
 
 ## Fluxo de uso
 
-1. Abra o app pela bandeja.
-2. Em cada conta, clique no ícone de login.
-3. Faça login manualmente no Chrome real aberto com perfil dedicado.
-4. Resolva a verificação Cloudflare se aparecer.
-5. Feche a janela dedicada de login.
-6. Clique em atualizar na conta.
-7. Se a página mudar ou a leitura falhar, use o botão `Manual` como fallback.
+1. Use o Codex normalmente (Desktop ou CLI) na conta que quer monitorar.
+2. Abra o app pela bandeja e clique em atualizar — ele lê o uso da conta ativa nos logs do Codex.
+3. Para monitorar outra conta, troque de conta no Codex e use-a; o monitor passa a acumular o uso dela também.
+4. Se uma conta nunca passa pelo Codex (só web), use o botão `Manual` como fallback.
 
 ## Segurança
 
-- O app não armazena senha.
-- Cada conta usa um perfil Chrome dedicado separado.
-- Estado local e perfis ficam no diretório `userData` do Electron para o app instalado.
+- O app não armazena senha e não abre navegador.
+- Leitura é somente local: lê o `auth.json` (id da conta/email) e os arquivos de sessão do Codex.
+- Estado local fica no diretório `userData` do Electron para o app instalado.
 - Logs passam por redaction de email, tokens, cookies e chaves.
-- A automação é somente leitura: conecta ao Chrome real via CDP, abre a página de uso e extrai texto do DOM.
-- O app não tenta resolver captcha automaticamente; ele abre uma janela Chrome dedicada sem automação para login/verificação manual.
-- Depois de login ou captcha, feche a janela dedicada antes de atualizar para liberar o perfil da coleta.
 
 ## Observação importante
 
-A URL padrão configurada é `https://chatgpt.com/codex/settings/usage`. Como a OpenAI pode alterar rotas/UI, a tela de configurações permite trocar a URL sem recompilar o app.
+Por padrão o app lê de `~/.codex`. Se o seu Codex usa outro `CODEX_HOME`, ajuste a pasta na tela de configurações sem recompilar o app.

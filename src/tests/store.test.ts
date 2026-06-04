@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import { AccountStore } from "../main/store";
+import type { AccountUsage } from "../shared/types";
 
 let tempDirs: string[] = [];
 
@@ -12,87 +13,73 @@ async function makeStore() {
   return { dir, store: new AccountStore(dir) };
 }
 
+function account(patch: Partial<AccountUsage> & { id: string }): AccountUsage {
+  return { label: patch.id, status: "ok", stale: false, ...patch };
+}
+
 afterEach(async () => {
   await Promise.all(tempDirs.map((dir) => rm(dir, { recursive: true, force: true })));
   tempDirs = [];
 });
 
 describe("AccountStore", () => {
-  it("creates exactly three default accounts with isolated profile paths", async () => {
-    const { dir, store } = await makeStore();
+  it("starts with no accounts and default settings", async () => {
+    const { store } = await makeStore();
+    const state = await store.loadState();
+
+    expect(state.accounts).toHaveLength(0);
+    expect(state.settings).toMatchObject({
+      codexHome: "",
+      refreshIntervalMinutes: 30,
+      refreshInBackground: false,
+      startWithWindows: false
+    });
+  });
+
+  it("upserts a discovered account and merges later readings", async () => {
+    const { store } = await makeStore();
+
+    await store.upsertAccount(
+      account({ id: "acct-1", label: "rony@aprovei.ai", email: "rony@aprovei.ai", remainingPercent: 80 })
+    );
+    await store.upsertAccount(account({ id: "acct-1", label: "rony@aprovei.ai", remainingPercent: 55, usedPercent: 45 }));
+
     const accounts = await store.load();
-
-    expect(accounts).toHaveLength(3);
-    expect(accounts.map((account) => account.label)).toEqual(["Conta A", "Conta B", "Conta C"]);
-    expect(new Set(accounts.map((account) => account.profilePath)).size).toBe(3);
-    expect(accounts[0].profilePath).toBe(join(dir, "profiles", "account-1"));
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]).toMatchObject({ id: "acct-1", remainingPercent: 55, usedPercent: 45 });
   });
 
-  it("persists labels and manual usage without losing stale state", async () => {
+  it("preserves a user-renamed label across upserts", async () => {
     const { store } = await makeStore();
 
-    await store.updateAccount("account-1", {
-      label: "Codex Pro",
-      status: "ok",
-      remainingPercent: 68,
-      usedPercent: 32,
-      resetText: "07:08",
-      stale: false
-    });
+    await store.upsertAccount(account({ id: "acct-1", label: "rony@aprovei.ai" }));
+    await store.updateAccount("acct-1", { label: "Conta principal" });
+    await store.upsertAccount(account({ id: "acct-1", label: "rony@aprovei.ai", remainingPercent: 20 }));
 
-    const reloaded = await store.load();
-
-    expect(reloaded[0]).toMatchObject({
-      id: "account-1",
-      label: "Codex Pro",
-      status: "ok",
-      remainingPercent: 68,
-      usedPercent: 32,
-      resetText: "07:08",
-      stale: false
-    });
+    const accounts = await store.load();
+    expect(accounts[0]).toMatchObject({ label: "Conta principal", remainingPercent: 20 });
   });
 
-  it("serializes concurrent account updates without losing state", async () => {
+  it("serializes concurrent upserts without losing accounts", async () => {
     const { store } = await makeStore();
-    await store.loadState();
 
-    await expect(
-      Promise.all([
-        store.updateAccount("account-1", { label: "Conta Login", status: "needs_login", stale: true }),
-        store.updateAccount("account-2", { label: "Conta Ok", status: "ok", stale: false, remainingPercent: 80 }),
-        store.updateAccount("account-3", { label: "Conta Erro", status: "parse_error", stale: true })
-      ])
-    ).resolves.toHaveLength(3);
+    await Promise.all([
+      store.upsertAccount(account({ id: "a", label: "a" })),
+      store.upsertAccount(account({ id: "b", label: "b" })),
+      store.upsertAccount(account({ id: "c", label: "c" }))
+    ]);
 
-    const reloaded = await store.load();
-
-    expect(reloaded[0]).toMatchObject({ label: "Conta Login", status: "needs_login", stale: true });
-    expect(reloaded[1]).toMatchObject({ label: "Conta Ok", status: "ok", stale: false, remainingPercent: 80 });
-    expect(reloaded[2]).toMatchObject({ label: "Conta Erro", status: "parse_error", stale: true });
+    const accounts = await store.load();
+    expect(new Set(accounts.map((item) => item.id))).toEqual(new Set(["a", "b", "c"]));
   });
 
-  it("recovers persisted refreshing accounts after restart", async () => {
+  it("downgrades persisted refreshing accounts to no_data on reload", async () => {
     const { dir, store } = await makeStore();
     await writeFile(
       join(dir, "state.json"),
       JSON.stringify({
-        accounts: [
-          {
-            id: "account-1",
-            label: "Conta presa",
-            profilePath: join(dir, "profiles", "account-1"),
-            status: "refreshing",
-            stale: false,
-            remainingPercent: 42
-          }
-        ],
-        settings: {
-          usageUrl: "https://chatgpt.com/codex/settings/usage",
-          refreshIntervalMinutes: 30,
-          refreshInBackground: false,
-          startWithWindows: false
-        }
+        accounts: [{ id: "acct-1", label: "Conta presa", status: "refreshing", stale: false, remainingPercent: 42 }],
+        settings: { codexHome: "", refreshIntervalMinutes: 30, refreshInBackground: false, startWithWindows: false }
       }),
       "utf8"
     );
@@ -101,10 +88,9 @@ describe("AccountStore", () => {
 
     expect(state.accounts[0]).toMatchObject({
       label: "Conta presa",
-      status: "parse_error",
+      status: "no_data",
       stale: true,
-      remainingPercent: 42,
-      errorMessage: "Atualização anterior foi interrompida. Clique em Atualizar."
+      remainingPercent: 42
     });
   });
 });

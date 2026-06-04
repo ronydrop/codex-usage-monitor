@@ -5,7 +5,6 @@ const api = {
   getState: (): Promise<IpcResult<AppState>> => ipcRenderer.invoke("state:get"),
   refreshAccount: (accountId: string): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:refresh", accountId),
   refreshAll: (): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:refresh-all"),
-  openLogin: (accountId: string): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:login", accountId),
   updateLabel: (accountId: string, label: string): Promise<IpcResult<AppState>> =>
     ipcRenderer.invoke("account:update-label", accountId, label),
   saveManualUsage: (accountId: string, input: ManualUsageInput): Promise<IpcResult<AppState>> =>

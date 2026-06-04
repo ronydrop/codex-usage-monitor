@@ -60,7 +60,6 @@ app.on("before-quit", () => {
   if (updateTimer) {
     clearInterval(updateTimer);
   }
-  void collector?.closeAll();
 });
 
 function createWindow(): void {
@@ -100,7 +99,7 @@ function updateTrayMenu(): void {
   tray?.setContextMenu(
     Menu.buildFromTemplate([
       { label: "Mostrar painel", click: () => showWindow() },
-      { label: "Atualizar agora", click: () => void refreshAllAccounts() },
+      { label: "Atualizar agora", click: () => void syncActiveAccount() },
       {
         label:
           updateState.status === "downloaded"
@@ -154,9 +153,8 @@ function positionMainWindow(): void {
 
 function registerIpcHandlers(): void {
   ipcMain.handle("state:get", () => wrap(() => store.loadState()));
-  ipcMain.handle("account:refresh", (_event, accountId: string) => wrap(() => refreshAccount(accountId)));
-  ipcMain.handle("account:refresh-all", () => wrap(() => refreshAllAccounts()));
-  ipcMain.handle("account:login", (_event, accountId: string) => wrap(() => openLogin(accountId)));
+  ipcMain.handle("account:refresh", () => wrap(() => syncActiveAccount()));
+  ipcMain.handle("account:refresh-all", () => wrap(() => syncActiveAccount()));
   ipcMain.handle("account:update-label", (_event, accountId: string, label: string) =>
     wrap(() => updateLabel(accountId, label))
   );
@@ -181,32 +179,29 @@ async function wrap<T>(operation: () => Promise<T>): Promise<IpcResult<T>> {
   }
 }
 
-async function refreshAccount(accountId: string): Promise<AppState> {
-  return refreshLock.run(accountId, async () => {
+async function syncActiveAccount(): Promise<AppState> {
+  return refreshLock.run("codex", async () => {
     const state = await store.loadState();
-    const account = findAccount(state.accounts, accountId);
+    const { account, patch } = await collector.readActiveUsage(state.settings);
 
-    await store.updateAccount(accountId, { status: "refreshing", stale: account.stale });
-    await broadcastState();
+    if (!account.accountId) {
+      return state;
+    }
 
-    const patch = await collector.collect(account, state.settings);
-    await store.updateAccount(accountId, preservePreviousUsage(account, patch));
+    const base: AccountUsage = {
+      id: account.accountId,
+      label: account.email ?? "Conta Codex",
+      accountId: account.accountId,
+      email: account.email,
+      planType: account.planType,
+      status: "no_data",
+      stale: true,
+      ...patch
+    };
+
+    await store.upsertAccount(base);
     return broadcastState();
   });
-}
-
-async function refreshAllAccounts(): Promise<AppState> {
-  const state = await store.loadState();
-  await Promise.all(state.accounts.map((account) => refreshAccount(account.id)));
-  return store.loadState();
-}
-
-async function openLogin(accountId: string): Promise<AppState> {
-  const state = await store.loadState();
-  const account = findAccount(state.accounts, accountId);
-  const patch = await collector.openLoginWindow(account, state.settings);
-  await store.updateAccount(accountId, preservePreviousUsage(account, patch));
-  return broadcastState();
 }
 
 async function updateLabel(accountId: string, label: string): Promise<AppState> {
@@ -219,6 +214,7 @@ async function saveManualUsage(accountId: string, input: ManualUsageInput): Prom
   await store.updateAccount(accountId, {
     status: "ok",
     stale: false,
+    manual: true,
     remainingPercent,
     usedPercent: 100 - remainingPercent,
     resetText: input.resetText?.trim() || undefined,
@@ -271,7 +267,7 @@ async function scheduleRefresh(): Promise<void> {
   const { settings } = await store.loadState();
   refreshTimer = setInterval(
     () => {
-      void refreshAllAccounts();
+      void syncActiveAccount();
     },
     settings.refreshIntervalMinutes * 60 * 1000
   );
@@ -365,25 +361,3 @@ async function installDownloadedUpdate(): Promise<UpdateState> {
   return updateState;
 }
 
-function findAccount(accounts: AccountUsage[], accountId: string): AccountUsage {
-  const account = accounts.find((candidate) => candidate.id === accountId);
-  if (!account) {
-    throw new Error(`Conta não encontrada: ${accountId}`);
-  }
-
-  return account;
-}
-
-function preservePreviousUsage(account: AccountUsage, patch: Partial<AccountUsage>): Partial<AccountUsage> {
-  if (patch.status === "ok") {
-    return patch;
-  }
-
-  return {
-    ...patch,
-    remainingPercent: account.remainingPercent,
-    usedPercent: account.usedPercent,
-    resetText: account.resetText,
-    windows: account.windows
-  };
-}

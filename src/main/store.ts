@@ -1,15 +1,15 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { AccountUsage, AppSettings, AppState } from "../shared/types";
+import type { AccountStatus, AccountUsage, AppSettings, AppState } from "../shared/types";
+import { getDefaultCodexHome } from "./codex-usage";
 
 const STORE_FILE = "state.json";
-const INTERRUPTED_REFRESH_MESSAGE = "Atualização anterior foi interrompida. Clique em Atualizar.";
 let atomicWriteCounter = 0;
 
-export const DEFAULT_USAGE_URL = "https://chatgpt.com/codex/settings/usage";
+const VALID_STATUSES: AccountStatus[] = ["ok", "no_data", "offline", "refreshing"];
 
 const DEFAULT_SETTINGS: AppSettings = {
-  usageUrl: DEFAULT_USAGE_URL,
+  codexHome: "",
   refreshIntervalMinutes: 30,
   refreshInBackground: false,
   startWithWindows: false
@@ -40,18 +40,26 @@ export class AccountStore {
     });
   }
 
+  async upsertAccount(account: AccountUsage): Promise<AccountUsage[]> {
+    return this.enqueueMutation(async () => {
+      const state = await this.readStateFromDisk();
+      const existing = state.accounts.find((candidate) => candidate.id === account.id);
+      const accounts = existing
+        ? state.accounts.map((candidate) =>
+            candidate.id === account.id ? { ...candidate, ...account, label: candidate.label } : candidate
+          )
+        : [...state.accounts, account];
+
+      await this.writeNormalizedState({ ...state, accounts });
+      return this.normalizeState({ ...state, accounts }).accounts;
+    });
+  }
+
   async updateAccount(accountId: string, patch: Partial<AccountUsage>): Promise<AccountUsage[]> {
     return this.enqueueMutation(async () => {
       const state = await this.readStateFromDisk();
       const accounts = state.accounts.map((account) =>
-        account.id === accountId
-          ? {
-              ...account,
-              ...patch,
-              id: account.id,
-              profilePath: account.profilePath
-            }
-          : account
+        account.id === accountId ? { ...account, ...patch, id: account.id } : account
       );
 
       await this.writeNormalizedState({ ...state, accounts });
@@ -75,7 +83,7 @@ export class AccountStore {
       const raw = await readFile(this.statePath, "utf8");
       const parsed = JSON.parse(raw) as Partial<AppState>;
       return this.normalizeState(parsed);
-    } catch (error) {
+    } catch {
       const state = this.createDefaultState();
       await this.writeNormalizedState(state);
       return state;
@@ -98,22 +106,7 @@ export class AccountStore {
   }
 
   private normalizeState(state: Partial<AppState>): AppState {
-    const defaultState = this.createDefaultState();
-    const accounts = defaultState.accounts.map((defaultAccount, index) => {
-      const existing = state.accounts?.find((account) => account.id === defaultAccount.id) ?? state.accounts?.[index];
-      const interruptedRefresh = existing?.status === "refreshing";
-
-      return {
-        ...defaultAccount,
-        ...existing,
-        id: defaultAccount.id,
-        profilePath: defaultAccount.profilePath,
-        label: existing?.label?.trim() || defaultAccount.label,
-        status: interruptedRefresh ? "parse_error" : (existing?.status ?? defaultAccount.status),
-        stale: interruptedRefresh ? true : (existing?.stale ?? defaultAccount.stale),
-        errorMessage: interruptedRefresh ? INTERRUPTED_REFRESH_MESSAGE : existing?.errorMessage
-      };
-    });
+    const accounts = (state.accounts ?? []).filter((account) => account && account.id).map(sanitizeAccount);
 
     return {
       accounts,
@@ -123,16 +116,26 @@ export class AccountStore {
 
   private createDefaultState(): AppState {
     return {
-      accounts: [1, 2, 3].map((number) => ({
-        id: `account-${number}`,
-        label: `Conta ${String.fromCharCode(64 + number)}`,
-        profilePath: join(this.baseDir, "profiles", `account-${number}`),
-        status: "needs_login",
-        stale: true
-      })),
-      settings: DEFAULT_SETTINGS
+      accounts: [],
+      settings: { ...DEFAULT_SETTINGS }
     };
   }
+}
+
+function sanitizeAccount(account: AccountUsage): AccountUsage {
+  const status: AccountStatus = VALID_STATUSES.includes(account.status)
+    ? account.status === "refreshing"
+      ? "no_data"
+      : account.status
+    : "no_data";
+
+  return {
+    ...account,
+    id: account.id,
+    label: account.label?.trim() || account.email || "Conta",
+    status,
+    stale: status === "ok" ? Boolean(account.stale) : true
+  };
 }
 
 function normalizeSettings(settings: AppSettings): AppSettings {
@@ -141,11 +144,15 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     : DEFAULT_SETTINGS.refreshIntervalMinutes;
 
   return {
-    usageUrl: settings.usageUrl?.trim() || DEFAULT_USAGE_URL,
+    codexHome: settings.codexHome?.trim() || "",
     refreshIntervalMinutes,
     refreshInBackground: Boolean(settings.refreshInBackground),
     startWithWindows: Boolean(settings.startWithWindows)
   };
+}
+
+export function resolveCodexHome(settings: AppSettings): string {
+  return settings.codexHome?.trim() || getDefaultCodexHome();
 }
 
 async function writeJsonAtomic(filePath: string, value: unknown): Promise<void> {

@@ -318,6 +318,17 @@ button:disabled {
   gap: 10px;
 }
 
+.empty-hint {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .account-card {
   border: 1px solid var(--border);
   border-left: 4px solid var(--muted-strong);
@@ -335,13 +346,11 @@ button:disabled {
   border-left-color: var(--accent-strong);
 }
 
-.account-card.status-needs_login,
-.account-card.status-captcha {
+.account-card.status-no_data {
   border-left-color: var(--warn);
 }
 
-.account-card.status-offline,
-.account-card.status-parse_error {
+.account-card.status-offline {
   border-left-color: var(--danger);
 }
 
