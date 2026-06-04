@@ -77,7 +77,7 @@ function createWindow(): void {
   mainWindow.on("close", (event) => {
     if (!isQuitting) {
       event.preventDefault();
-      mainWindow?.minimize();
+      mainWindow?.hide();
     }
   });
 
@@ -245,7 +245,7 @@ async function openLogsDir(): Promise<void> {
 }
 
 async function hideMainWindow(): Promise<void> {
-  mainWindow?.minimize();
+  mainWindow?.hide();
 }
 
 async function broadcastState(): Promise<AppState> {

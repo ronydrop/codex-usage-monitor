@@ -18,6 +18,7 @@ export function createMainWindowOptions({
     minHeight: 560,
     show: false,
     frame: false,
+    skipTaskbar: true,
     autoHideMenuBar: true,
     title: "Codex Usage Monitor",
     icon,
