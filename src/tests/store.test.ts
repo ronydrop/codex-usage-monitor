@@ -30,7 +30,7 @@ describe("AccountStore", () => {
     expect(state.accounts).toHaveLength(0);
     expect(state.settings).toMatchObject({
       codexHome: "",
-      refreshIntervalMinutes: 30,
+      refreshIntervalMinutes: 10,
       refreshInBackground: false,
       startWithWindows: false
     });
@@ -47,6 +47,16 @@ describe("AccountStore", () => {
     const accounts = await store.load();
     expect(accounts).toHaveLength(1);
     expect(accounts[0]).toMatchObject({ id: "acct-1", remainingPercent: 55, usedPercent: 45 });
+  });
+
+  it("keeps the stored codexHome when an upsert omits it", async () => {
+    const { store } = await makeStore();
+
+    await store.upsertAccount(account({ id: "acct-1", label: "rony@aprovei.ai", codexHome: "/homes/acct-1" }));
+    await store.upsertAccount(account({ id: "acct-1", label: "rony@aprovei.ai", remainingPercent: 30, codexHome: undefined }));
+
+    const accounts = await store.load();
+    expect(accounts[0]).toMatchObject({ codexHome: "/homes/acct-1", remainingPercent: 30 });
   });
 
   it("preserves a user-renamed label across upserts", async () => {

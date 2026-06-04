@@ -10,7 +10,7 @@ import { UsageCollector } from "./collector";
 import { AppLogger } from "./logger";
 import { triggerExec } from "./codex-runner";
 import { runLogin } from "./codex-login";
-import { getDefaultCodexHome } from "./codex-usage";
+import { getDefaultCodexHome, type CodexActiveAccount } from "./codex-usage";
 import { createInitialUpdateState, reduceUpdateState, type UpdateStateEvent } from "./update-state";
 import { getBottomRightWindowBounds } from "./window-position";
 import { createMainWindowOptions } from "./window-options";
@@ -257,13 +257,25 @@ async function addAccount(): Promise<AppState> {
   const codexHome = join(app.getPath("userData"), "homes", id);
   await mkdir(codexHome, { recursive: true });
 
-  const account = await runLogin(codexHome, () => {
-    mainWindow?.webContents.send("account:login-started");
-  });
+  let account: CodexActiveAccount;
+  try {
+    account = await runLogin(codexHome, () => {
+      mainWindow?.webContents.send("account:login-started");
+    });
+  } catch (error) {
+    await rm(codexHome, { recursive: true, force: true }).catch(() => undefined);
+    throw error;
+  }
 
   if (!account.accountId) {
-    await rm(codexHome, { recursive: true, force: true });
+    await rm(codexHome, { recursive: true, force: true }).catch(() => undefined);
     throw new Error("Login cancelado ou sem conta reconhecida.");
+  }
+
+  const duplicate = (await store.loadState()).accounts.find((a) => a.accountId === account.accountId);
+  if (duplicate) {
+    await rm(codexHome, { recursive: true, force: true }).catch(() => undefined);
+    throw new Error(`Conta ${account.email ?? account.accountId} já está adicionada.`);
   }
 
   const base: AccountUsage = {

@@ -10,7 +10,7 @@ const VALID_STATUSES: AccountStatus[] = ["ok", "no_data", "offline", "refreshing
 
 const DEFAULT_SETTINGS: AppSettings = {
   codexHome: "",
-  refreshIntervalMinutes: 15,
+  refreshIntervalMinutes: 10,
   refreshInBackground: false,
   startWithWindows: false
 };
@@ -46,7 +46,9 @@ export class AccountStore {
       const existing = state.accounts.find((candidate) => candidate.id === account.id);
       const accounts = existing
         ? state.accounts.map((candidate) =>
-            candidate.id === account.id ? { ...candidate, ...account, label: candidate.label } : candidate
+            candidate.id === account.id
+              ? { ...candidate, ...account, label: candidate.label, codexHome: account.codexHome ?? candidate.codexHome }
+              : candidate
           )
         : [...state.accounts, account];
 

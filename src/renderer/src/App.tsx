@@ -25,7 +25,7 @@ type PendingAction = string | undefined;
 const fallbackState: AppState = {
   settings: {
     codexHome: "",
-    refreshIntervalMinutes: 30,
+    refreshIntervalMinutes: 10,
     refreshInBackground: false,
     startWithWindows: false
   },
