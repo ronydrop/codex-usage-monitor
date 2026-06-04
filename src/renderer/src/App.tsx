@@ -7,10 +7,12 @@ import {
   FileText,
   PackageCheck,
   Pencil,
+  Plus,
   RefreshCcw,
   Save,
   Settings,
   ShieldCheck,
+  Trash2,
   WifiOff,
   X
 } from "lucide-react";
@@ -65,6 +67,8 @@ const previewApi = {
   getState: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   refreshAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   refreshAll: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
+  addAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
+  removeAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   updateLabel: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   saveManualUsage: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   saveSettings: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
@@ -92,6 +96,7 @@ export function App() {
   const [settingsDraft, setSettingsDraft] = useState<AppSettings | undefined>();
   const [updateState, setUpdateState] = useState<UpdateState | undefined>();
   const [expandedAccountIds, setExpandedAccountIds] = useState<Set<string>>(() => new Set());
+  const [addingAccount, setAddingAccount] = useState(false);
 
   useEffect(() => {
     void loadState();
@@ -238,6 +243,24 @@ export function App() {
         </div>
         <div className="topbar-actions">
           <IconButton
+            title="Adicionar conta"
+            busy={addingAccount}
+            onClick={async () => {
+              setAddingAccount(true);
+              setError(undefined);
+              const result = await api.addAccount();
+              setAddingAccount(false);
+              if (!result.ok) {
+                setError(result.error);
+              } else if (isAppState(result.data)) {
+                setState(result.data);
+                setSettingsDraft(result.data.settings);
+              }
+            }}
+          >
+            <Plus />
+          </IconButton>
+          <IconButton
             title="Atualizar todas"
             busy={pendingAction === "refresh-all"}
             onClick={() => callApi("refresh-all", () => api.refreshAll())}
@@ -320,9 +343,15 @@ export function App() {
       ) : null}
 
       <section className="account-list" aria-label="Contas monitoradas">
-        {state.accounts.length === 0 ? (
+        {addingAccount ? (
+          <div className="login-hint">
+            <RefreshCcw className="spin" aria-hidden />
+            <span>Aguardando login no browser... Complete o OAuth e a conta será adicionada.</span>
+          </div>
+        ) : null}
+        {state.accounts.length === 0 && !addingAccount ? (
           <p className="empty-hint">
-            Nenhuma conta ainda. Abra o Codex (Desktop ou CLI) em uma conta e clique em atualizar para ler o uso.
+            Nenhuma conta ainda. Clique em + para adicionar ou abra o Codex e clique em atualizar.
           </p>
         ) : null}
         {state.accounts.map((account) => {
@@ -374,6 +403,18 @@ export function App() {
                       <IconButton title="Renomear" onClick={() => beginEditLabel(account)}>
                         <Pencil />
                       </IconButton>
+                      {account.codexHome ? (
+                        <IconButton
+                          title="Remover conta"
+                          onClick={() => {
+                            if (confirm(`Remover conta ${account.email ?? account.label}?`)) {
+                              void callApi(`remove-${account.id}`, () => api.removeAccount(account.id));
+                            }
+                          }}
+                        >
+                          <Trash2 />
+                        </IconButton>
+                      ) : null}
                     </>
                   )}
                 </div>

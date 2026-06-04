@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, nativeTheme, screen, shell } from "electron";
 import { autoUpdater } from "electron-updater";
+import { mkdir, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AccountUsage, AppSettings, AppState, IpcResult, ManualUsageInput, UpdateState } from "../shared/types";
@@ -7,6 +8,9 @@ import { AccountRefreshLock } from "./refresh-lock";
 import { AccountStore } from "./store";
 import { UsageCollector } from "./collector";
 import { AppLogger } from "./logger";
+import { triggerExec } from "./codex-runner";
+import { runLogin } from "./codex-login";
+import { getDefaultCodexHome } from "./codex-usage";
 import { createInitialUpdateState, reduceUpdateState, type UpdateStateEvent } from "./update-state";
 import { getBottomRightWindowBounds } from "./window-position";
 import { createMainWindowOptions } from "./window-options";
@@ -49,6 +53,7 @@ app.whenReady().then(async () => {
   configureAutoUpdater();
   await applyLoginItemSettings();
   await scheduleRefresh();
+  void syncAllAccounts();
 });
 
 app.on("window-all-closed", () => undefined);
@@ -99,7 +104,7 @@ function updateTrayMenu(): void {
   tray?.setContextMenu(
     Menu.buildFromTemplate([
       { label: "Mostrar painel", click: () => showWindow() },
-      { label: "Atualizar agora", click: () => void syncActiveAccount() },
+      { label: "Atualizar agora", click: () => void syncAllAccounts() },
       {
         label:
           updateState.status === "downloaded"
@@ -153,8 +158,14 @@ function positionMainWindow(): void {
 
 function registerIpcHandlers(): void {
   ipcMain.handle("state:get", () => wrap(() => store.loadState()));
-  ipcMain.handle("account:refresh", () => wrap(() => syncActiveAccount()));
-  ipcMain.handle("account:refresh-all", () => wrap(() => syncActiveAccount()));
+  ipcMain.handle("account:refresh", (_event, accountId: string) =>
+    wrap(() => syncOneAccount(accountId))
+  );
+  ipcMain.handle("account:refresh-all", () => wrap(() => syncAllAccounts()));
+  ipcMain.handle("account:add", () => wrap(() => addAccount()));
+  ipcMain.handle("account:remove", (_event, accountId: string) =>
+    wrap(() => removeAccount(accountId))
+  );
   ipcMain.handle("account:update-label", (_event, accountId: string, label: string) =>
     wrap(() => updateLabel(accountId, label))
   );
@@ -179,29 +190,121 @@ async function wrap<T>(operation: () => Promise<T>): Promise<IpcResult<T>> {
   }
 }
 
-async function syncActiveAccount(): Promise<AppState> {
-  return refreshLock.run("codex", async () => {
-    const state = await store.loadState();
-    const { account, patch } = await collector.readActiveUsage(state.settings);
+async function syncAllAccounts(): Promise<AppState> {
+  const state = await store.loadState();
+  const { settings, accounts } = state;
+
+  const homesFromStore = accounts
+    .filter((a) => !a.manual && a.codexHome)
+    .map((a) => ({ id: a.id, codexHome: a.codexHome as string }));
+
+  const allHomes: Array<{ id: string | undefined; codexHome: string }> = [
+    { id: undefined, codexHome: settings.codexHome || "" },
+    ...homesFromStore
+  ];
+
+  for (const entry of allHomes) {
+    await syncOneHome(entry.codexHome, settings);
+  }
+
+  return broadcastState();
+}
+
+async function syncOneAccount(accountId: string): Promise<AppState> {
+  const state = await store.loadState();
+  const account = state.accounts.find((a) => a.id === accountId);
+
+  if (!account) {
+    return state;
+  }
+
+  await syncOneHome(account.codexHome ?? "", state.settings);
+  return broadcastState();
+}
+
+async function syncOneHome(codexHome: string, settings: AppSettings): Promise<void> {
+  const lockKey = codexHome || "default";
+
+  await refreshLock.run(lockKey, async () => {
+    if (codexHome) {
+      try {
+        await triggerExec(codexHome);
+      } catch (err) {
+        await logger.warn("triggerExec falhou", {
+          codexHome,
+          error: err instanceof Error ? err.message : String(err)
+        });
+      }
+    }
+
+    const resolvedHome = codexHome || settings.codexHome || getDefaultCodexHome();
+    const { account, patch } = await collector.readUsageFor(resolvedHome);
 
     if (!account.accountId) {
-      return state;
+      return;
     }
+
+    const state = await store.loadState();
+    const existing = state.accounts.find((a) => a.accountId === account.accountId);
 
     const base: AccountUsage = {
       id: account.accountId,
-      label: account.email ?? "Conta Codex",
+      label: existing?.label || account.email || "Conta Codex",
       accountId: account.accountId,
       email: account.email,
       planType: account.planType,
+      codexHome: codexHome || undefined,
       status: "no_data",
       stale: true,
       ...patch
     };
 
     await store.upsertAccount(base);
-    return broadcastState();
   });
+}
+
+async function addAccount(): Promise<AppState> {
+  const id = `account-${Date.now()}`;
+  const codexHome = join(app.getPath("userData"), "homes", id);
+  await mkdir(codexHome, { recursive: true });
+
+  const account = await runLogin(codexHome, () => {
+    mainWindow?.webContents.send("account:login-started");
+  });
+
+  if (!account.accountId) {
+    await rm(codexHome, { recursive: true, force: true });
+    throw new Error("Login cancelado ou sem conta reconhecida.");
+  }
+
+  const base: AccountUsage = {
+    id: account.accountId,
+    label: account.email ?? "Conta Codex",
+    accountId: account.accountId,
+    email: account.email,
+    planType: account.planType,
+    codexHome,
+    status: "no_data",
+    stale: true
+  };
+
+  await store.upsertAccount(base);
+
+  await syncOneHome(codexHome, (await store.loadState()).settings);
+
+  return broadcastState();
+}
+
+async function removeAccount(accountId: string): Promise<AppState> {
+  const state = await store.loadState();
+  const account = state.accounts.find((a) => a.id === accountId);
+
+  if (account?.codexHome) {
+    await rm(account.codexHome, { recursive: true, force: true }).catch(() => undefined);
+  }
+
+  await store.removeAccount(accountId);
+  return broadcastState();
 }
 
 async function updateLabel(accountId: string, label: string): Promise<AppState> {
@@ -267,7 +370,7 @@ async function scheduleRefresh(): Promise<void> {
   const { settings } = await store.loadState();
   refreshTimer = setInterval(
     () => {
-      void syncActiveAccount();
+      void syncAllAccounts();
     },
     settings.refreshIntervalMinutes * 60 * 1000
   );

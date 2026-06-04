@@ -15,6 +15,7 @@ export type AccountUsage = {
   accountId?: string;
   email?: string;
   planType?: string;
+  codexHome?: string;
   manual?: boolean;
   status: AccountStatus;
   usedPercent?: number;

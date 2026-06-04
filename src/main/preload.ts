@@ -11,6 +11,9 @@ const api = {
     ipcRenderer.invoke("account:manual-usage", accountId, input),
   saveSettings: (settings: Partial<AppSettings>): Promise<IpcResult<AppState>> =>
     ipcRenderer.invoke("settings:save", settings),
+  addAccount: (): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:add"),
+  removeAccount: (accountId: string): Promise<IpcResult<AppState>> =>
+    ipcRenderer.invoke("account:remove", accountId),
   openLogsDir: (): Promise<IpcResult<void>> => ipcRenderer.invoke("logs:open"),
   hideWindow: (): Promise<IpcResult<void>> => ipcRenderer.invoke("window:hide"),
   getUpdateState: (): Promise<IpcResult<UpdateState>> => ipcRenderer.invoke("update:get"),
