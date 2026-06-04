@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppSettings, AppState, IpcResult, ManualUsageInput, UpdateState } from "../shared/types";
+import type { AppSettings, AppState, IpcResult, UpdateState } from "../shared/types";
 
 const api = {
   getState: (): Promise<IpcResult<AppState>> => ipcRenderer.invoke("state:get"),
@@ -7,8 +7,6 @@ const api = {
   refreshAll: (): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:refresh-all"),
   updateLabel: (accountId: string, label: string): Promise<IpcResult<AppState>> =>
     ipcRenderer.invoke("account:update-label", accountId, label),
-  saveManualUsage: (accountId: string, input: ManualUsageInput): Promise<IpcResult<AppState>> =>
-    ipcRenderer.invoke("account:manual-usage", accountId, input),
   saveSettings: (settings: Partial<AppSettings>): Promise<IpcResult<AppState>> =>
     ipcRenderer.invoke("settings:save", settings),
   openLogsDir: (): Promise<IpcResult<void>> => ipcRenderer.invoke("logs:open"),

@@ -15,7 +15,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { AccountUsage, AppSettings, AppState, IpcResult, ManualUsageInput, UpdateState } from "../../shared/types";
+import type { AccountUsage, AppSettings, AppState, IpcResult, UpdateState } from "../../shared/types";
 import { formatReset } from "../../shared/reset";
 
 type PendingAction = string | undefined;
@@ -50,7 +50,7 @@ const fallbackState: AppState = {
       email: "sac@aprovei.ai",
       status: "no_data",
       stale: true,
-      errorMessage: "Sem leitura do Codex ainda. Use o Codex nesta conta ou informe Manual."
+      errorMessage: "Sem leitura do Codex ainda. Use o Codex nesta conta para gerar uma leitura."
     }
   ]
 };
@@ -66,7 +66,6 @@ const previewApi = {
   refreshAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   refreshAll: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   updateLabel: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
-  saveManualUsage: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   saveSettings: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   openLogsDir: async (): Promise<IpcResult<void>> => ({ ok: true, data: undefined }),
   hideWindow: async (): Promise<IpcResult<void>> => ({ ok: true, data: undefined }),
@@ -85,9 +84,6 @@ export function App() {
   const [pendingAction, setPendingAction] = useState<PendingAction>();
   const [editingLabelId, setEditingLabelId] = useState<string | undefined>();
   const [labelDraft, setLabelDraft] = useState("");
-  const [manualAccountId, setManualAccountId] = useState<string | undefined>();
-  const [manualPercent, setManualPercent] = useState("50");
-  const [manualReset, setManualReset] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState<AppSettings | undefined>();
   const [updateState, setUpdateState] = useState<UpdateState | undefined>();
@@ -161,56 +157,16 @@ export function App() {
     setLabelDraft(account.label);
   }
 
-  function beginManual(account: AccountUsage) {
-    expandAccount(account.id);
-    setManualAccountId(account.id);
-    setManualPercent(String(account.remainingPercent ?? 50));
-    setManualReset(account.resetText ?? "");
-  }
-
-  function expandAccount(accountId: string) {
-    setExpandedAccountIds((current) => {
-      if (current.has(accountId)) {
-        return current;
-      }
-
-      const next = new Set(current);
-      next.add(accountId);
-      return next;
-    });
-  }
-
   function toggleAccountExpanded(accountId: string) {
-    const shouldCollapse = expandedAccountIds.has(accountId) || manualAccountId === accountId;
-
-    if (shouldCollapse && manualAccountId === accountId) {
-      setManualAccountId(undefined);
-    }
-
     setExpandedAccountIds((current) => {
       const next = new Set(current);
-      if (shouldCollapse) {
+      if (current.has(accountId)) {
         next.delete(accountId);
       } else {
         next.add(accountId);
       }
-
       return next;
     });
-  }
-
-  async function saveManualUsage() {
-    if (!manualAccountId) {
-      return;
-    }
-
-    const payload: ManualUsageInput = {
-      remainingPercent: Number.parseInt(manualPercent, 10),
-      resetText: manualReset
-    };
-
-    await callApi(`manual-${manualAccountId}`, () => api.saveManualUsage(manualAccountId, payload));
-    setManualAccountId(undefined);
   }
 
   async function saveSettings() {
@@ -326,7 +282,7 @@ export function App() {
           </p>
         ) : null}
         {state.accounts.map((account) => {
-          const expanded = expandedAccountIds.has(account.id) || manualAccountId === account.id;
+          const expanded = expandedAccountIds.has(account.id);
           const detailsId = `account-details-${account.id}`;
 
           return (
@@ -392,41 +348,7 @@ export function App() {
                       >
                         <RefreshCcw />
                       </IconButton>
-                      <button className="mini-button" onClick={() => beginManual(account)}>
-                        Manual
-                      </button>
                     </div>
-
-                    {manualAccountId === account.id ? (
-                      <form
-                        className="manual-panel"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void saveManualUsage();
-                        }}
-                      >
-                        <label>
-                          <span>% restante</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={manualPercent}
-                            onChange={(event) => setManualPercent(event.target.value)}
-                          />
-                        </label>
-                        <label>
-                          <span>Reset</span>
-                          <input value={manualReset} onChange={(event) => setManualReset(event.target.value)} />
-                        </label>
-                        <IconButton title="Salvar uso manual" type="submit">
-                          <Save />
-                        </IconButton>
-                        <IconButton title="Cancelar" type="button" onClick={() => setManualAccountId(undefined)}>
-                          <X />
-                        </IconButton>
-                      </form>
-                    ) : null}
                   </div>
                 ) : (
                   <CompactAccountSummary account={account} />
@@ -624,7 +546,7 @@ function IconButton({
 
 function statusText(account: AccountUsage): string {
   if (account.status === "ok" && !account.stale) {
-    return account.manual ? "Uso manual" : "Leitura atual";
+    return "Leitura atual";
   }
 
   if (account.status === "refreshing") {

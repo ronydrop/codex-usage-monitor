@@ -97,8 +97,7 @@ button:disabled {
 .topbar-actions,
 .account-actions,
 .settings-actions,
-.label-editor,
-.manual-panel {
+.label-editor {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -143,8 +142,7 @@ button:disabled {
 }
 
 .primary-button,
-.text-button,
-.mini-button {
+.text-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -163,8 +161,7 @@ button:disabled {
   background: var(--accent);
 }
 
-.text-button,
-.mini-button {
+.text-button {
   color: var(--text);
   border-color: var(--border);
   background: var(--surface-raised);
@@ -204,8 +201,7 @@ button:disabled {
   padding: 12px;
 }
 
-.settings-panel label,
-.manual-panel label {
+.settings-panel label {
   display: grid;
   gap: 6px;
   color: var(--muted);
@@ -214,7 +210,6 @@ button:disabled {
 }
 
 .settings-panel input,
-.manual-panel input,
 .label-editor input {
   width: 100%;
   min-height: 34px;
@@ -227,7 +222,6 @@ button:disabled {
 }
 
 .settings-panel input:focus,
-.manual-panel input:focus,
 .label-editor input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.16);
@@ -588,14 +582,6 @@ button:disabled {
   margin-top: 10px;
 }
 
-.manual-panel {
-  display: grid;
-  grid-template-columns: 94px 1fr 36px 36px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
-
 .footer-line {
   margin-top: 12px;
   color: var(--text-soft);
@@ -623,8 +609,7 @@ button:disabled {
     padding: 12px;
   }
 
-  .settings-grid,
-  .manual-panel {
+  .settings-grid {
     grid-template-columns: 1fr;
   }
 

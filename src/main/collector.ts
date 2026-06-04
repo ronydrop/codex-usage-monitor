@@ -10,7 +10,7 @@ import {
 } from "./codex-usage";
 import { resolveCodexHome } from "./store";
 
-const NO_DATA_MESSAGE = "Sem leitura do Codex ainda. Use o Codex nesta conta ou informe Manual.";
+const NO_DATA_MESSAGE = "Sem leitura do Codex ainda. Use o Codex nesta conta para gerar uma leitura.";
 const JUST_SWITCHED_MESSAGE = "Conta recém-trocada. Use o Codex nesta conta para ler o uso atualizado.";
 
 export type ActiveUsage = {
@@ -56,7 +56,6 @@ export class UsageCollector {
       patch: {
         status: "ok",
         stale: false,
-        manual: false,
         planType: account.planType ?? snapshot.rateLimits.planType,
         remainingPercent: primary?.remainingPercent,
         usedPercent: primary?.usedPercent,

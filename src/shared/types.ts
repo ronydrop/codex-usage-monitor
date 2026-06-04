@@ -15,7 +15,6 @@ export type AccountUsage = {
   accountId?: string;
   email?: string;
   planType?: string;
-  manual?: boolean;
   status: AccountStatus;
   usedPercent?: number;
   remainingPercent?: number;
@@ -32,11 +31,6 @@ export type AppSettings = {
   refreshIntervalMinutes: number;
   refreshInBackground: boolean;
   startWithWindows: boolean;
-};
-
-export type ManualUsageInput = {
-  remainingPercent: number;
-  resetText?: string;
 };
 
 export type AppState = {

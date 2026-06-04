@@ -2,7 +2,7 @@ import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, nativeTheme, scre
 import { autoUpdater } from "electron-updater";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AccountUsage, AppSettings, AppState, IpcResult, ManualUsageInput, UpdateState } from "../shared/types";
+import type { AccountUsage, AppSettings, AppState, IpcResult, UpdateState } from "../shared/types";
 import { AccountRefreshLock } from "./refresh-lock";
 import { AccountStore } from "./store";
 import { UsageCollector } from "./collector";
@@ -158,9 +158,6 @@ function registerIpcHandlers(): void {
   ipcMain.handle("account:update-label", (_event, accountId: string, label: string) =>
     wrap(() => updateLabel(accountId, label))
   );
-  ipcMain.handle("account:manual-usage", (_event, accountId: string, input: ManualUsageInput) =>
-    wrap(() => saveManualUsage(accountId, input))
-  );
   ipcMain.handle("settings:save", (_event, settings: Partial<AppSettings>) => wrap(() => saveSettings(settings)));
   ipcMain.handle("logs:open", () => wrap(openLogsDir));
   ipcMain.handle("window:hide", () => wrap(hideMainWindow));
@@ -206,30 +203,6 @@ async function syncActiveAccount(): Promise<AppState> {
 
 async function updateLabel(accountId: string, label: string): Promise<AppState> {
   await store.updateAccount(accountId, { label: label.trim().slice(0, 40) || "Conta" });
-  return broadcastState();
-}
-
-async function saveManualUsage(accountId: string, input: ManualUsageInput): Promise<AppState> {
-  const remainingPercent = Math.min(100, Math.max(0, Math.round(input.remainingPercent)));
-  await store.updateAccount(accountId, {
-    status: "ok",
-    stale: false,
-    manual: true,
-    remainingPercent,
-    usedPercent: 100 - remainingPercent,
-    resetText: input.resetText?.trim() || undefined,
-    lastCheckedAt: new Date().toISOString(),
-    windows: [
-      {
-        label: "Manual",
-        remainingPercent,
-        usedPercent: 100 - remainingPercent,
-        resetText: input.resetText?.trim() || undefined,
-        rawText: `${remainingPercent}% ${input.resetText ?? ""}`.trim()
-      }
-    ],
-    errorMessage: undefined
-  });
   return broadcastState();
 }
 
