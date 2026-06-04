@@ -7,6 +7,7 @@ const api = {
   refreshAll: (): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:refresh-all"),
   updateLabel: (accountId: string, label: string): Promise<IpcResult<AppState>> =>
     ipcRenderer.invoke("account:update-label", accountId, label),
+  deleteAccount: (accountId: string): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:delete", accountId),
   saveSettings: (settings: Partial<AppSettings>): Promise<IpcResult<AppState>> =>
     ipcRenderer.invoke("settings:save", settings),
   addAccount: (): Promise<IpcResult<AppState>> => ipcRenderer.invoke("account:add"),

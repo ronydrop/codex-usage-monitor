@@ -60,6 +60,18 @@ describe("AccountStore", () => {
     expect(accounts[0]).toMatchObject({ label: "Conta principal", remainingPercent: 20 });
   });
 
+  it("removes an account from persisted state", async () => {
+    const { store } = await makeStore();
+
+    await store.upsertAccount(account({ id: "acct-1", label: "Conta principal" }));
+    await store.upsertAccount(account({ id: "acct-2", label: "Conta secundaria" }));
+
+    const accounts = await store.removeAccount("acct-1");
+
+    expect(accounts.map((item) => item.id)).toEqual(["acct-2"]);
+    expect((await store.load()).map((item) => item.id)).toEqual(["acct-2"]);
+  });
+
   it("serializes concurrent upserts without losing accounts", async () => {
     const { store } = await makeStore();
 

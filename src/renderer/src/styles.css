@@ -122,6 +122,15 @@ button:disabled {
   background: var(--surface-muted);
 }
 
+.icon-button.danger {
+  color: var(--danger);
+}
+
+.icon-button.danger:hover {
+  border-color: rgba(255, 139, 139, 0.55);
+  background: rgba(255, 139, 139, 0.12);
+}
+
 .icon-button svg {
   width: 18px;
   height: 18px;

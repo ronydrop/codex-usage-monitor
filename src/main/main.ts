@@ -14,6 +14,7 @@ import { getDefaultCodexHome } from "./codex-usage";
 import { createInitialUpdateState, reduceUpdateState, type UpdateStateEvent } from "./update-state";
 import { getBottomRightWindowBounds } from "./window-position";
 import { createMainWindowOptions } from "./window-options";
+import { hideWindowToTray, showWindowFromTray } from "./window-visibility";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WINDOW_SIZE = { width: 520, height: 640 };
@@ -82,7 +83,7 @@ function createWindow(): void {
   mainWindow.on("close", (event) => {
     if (!isQuitting) {
       event.preventDefault();
-      mainWindow?.hide();
+      hideWindowToTray(mainWindow);
     }
   });
 
@@ -125,9 +126,9 @@ function showWindow(): void {
     createWindow();
   }
 
-  positionMainWindow();
-  mainWindow?.show();
-  mainWindow?.focus();
+  if (mainWindow) {
+    showWindowFromTray(mainWindow, getPreferredWindowBounds());
+  }
 }
 
 function quitApp(): void {
@@ -136,24 +137,14 @@ function quitApp(): void {
 }
 
 function createTrayIcon(): Electron.NativeImage {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <path fill="#60a5fa" d="M12.8 9.4 6.2 16l6.6 6.6 2.4-2.4-4.2-4.2 4.2-4.2-2.4-2.4Z"/>
-      <path fill="#60a5fa" d="m19.2 9.4-2.4 2.4 4.2 4.2-4.2 4.2 2.4 2.4 6.6-6.6-6.6-6.6Z"/>
-      <path fill="#4ade80" d="M18.7 6.1c1 .3 1.6 1.3 1.3 2.3l-5 17.4c-.3 1-1.3 1.6-2.3 1.3s-1.6-1.3-1.3-2.3l5-17.4c.3-1 1.3-1.6 2.3-1.3Z"/>
-    </svg>
-  `;
-  const icon = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+  const b64 = "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";
+  const icon = nativeImage.createFromDataURL(`data:image/png;base64,${b64}`);
   return process.platform === "win32" ? icon.resize({ width: 16, height: 16 }) : icon;
 }
 
 function getPreferredWindowBounds(): Electron.Rectangle {
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   return getBottomRightWindowBounds(display.workArea, WINDOW_SIZE);
-}
-
-function positionMainWindow(): void {
-  mainWindow?.setBounds(getPreferredWindowBounds(), false);
 }
 
 function registerIpcHandlers(): void {
@@ -169,6 +160,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle("account:update-label", (_event, accountId: string, label: string) =>
     wrap(() => updateLabel(accountId, label))
   );
+  ipcMain.handle("account:delete", (_event, accountId: string) => wrap(() => deleteAccount(accountId)));
   ipcMain.handle("settings:save", (_event, settings: Partial<AppSettings>) => wrap(() => saveSettings(settings)));
   ipcMain.handle("logs:open", () => wrap(openLogsDir));
   ipcMain.handle("window:hide", () => wrap(hideMainWindow));
@@ -309,6 +301,11 @@ async function updateLabel(accountId: string, label: string): Promise<AppState> 
   return broadcastState();
 }
 
+async function deleteAccount(accountId: string): Promise<AppState> {
+  await store.removeAccount(accountId);
+  return broadcastState();
+}
+
 async function saveSettings(settings: Partial<AppSettings>): Promise<AppState> {
   await store.updateSettings(settings);
   await applyLoginItemSettings();
@@ -321,7 +318,7 @@ async function openLogsDir(): Promise<void> {
 }
 
 async function hideMainWindow(): Promise<void> {
-  mainWindow?.hide();
+  hideWindowToTray(mainWindow);
 }
 
 async function broadcastState(): Promise<AppState> {
@@ -436,4 +433,3 @@ async function installDownloadedUpdate(): Promise<UpdateState> {
   autoUpdater.quitAndInstall(false, true);
   return updateState;
 }
-

@@ -70,6 +70,7 @@ const previewApi = {
   addAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   removeAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   updateLabel: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
+  deleteAccount: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   saveSettings: async (): Promise<IpcResult<AppState>> => ({ ok: true, data: fallbackState }),
   openLogsDir: async (): Promise<IpcResult<void>> => ({ ok: true, data: undefined }),
   hideWindow: async (): Promise<IpcResult<void>> => ({ ok: true, data: undefined }),
@@ -172,6 +173,24 @@ export function App() {
       }
       return next;
     });
+  }
+
+  function confirmDeleteAccount(account: AccountUsage) {
+    const confirmed = window.confirm(`Excluir a conta "${account.label}" do monitor?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setExpandedAccountIds((current) => {
+      const next = new Set(current);
+      next.delete(account.id);
+      return next;
+    });
+    if (editingLabelId === account.id) {
+      setEditingLabelId(undefined);
+    }
+
+    void callApi(`delete-${account.id}`, () => api.deleteAccount(account.id));
   }
 
   async function saveSettings() {
@@ -389,6 +408,14 @@ export function App() {
                       >
                         <RefreshCcw />
                       </IconButton>
+                      <IconButton
+                        title="Excluir conta"
+                        danger
+                        busy={pendingAction === `delete-${account.id}`}
+                        onClick={() => confirmDeleteAccount(account)}
+                      >
+                        <Trash2 />
+                      </IconButton>
                     </div>
                   </div>
                 ) : (
@@ -562,6 +589,7 @@ function IconButton({
   onClick,
   busy,
   active,
+  danger,
   type = "button"
 }: {
   title: string;
@@ -569,11 +597,12 @@ function IconButton({
   onClick?: () => void;
   busy?: boolean;
   active?: boolean;
+  danger?: boolean;
   type?: "button" | "submit";
 }) {
   return (
     <button
-      className={`icon-button${active ? " active" : ""}`}
+      className={`icon-button${active ? " active" : ""}${danger ? " danger" : ""}`}
       title={title}
       aria-label={title}
       type={type}
